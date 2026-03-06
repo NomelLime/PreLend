@@ -50,10 +50,21 @@ $logger = new ClickLogger($db);
 switch ($filterResult) {
 
     case BotFilter::CLOAK:
-        // Платформенный сканер — показываем легенду (шаблон определяется в Этапе 3)
+        // Платформенный сканер — показываем легенду
+        // Определяем шаблон по первому подходящему рекламодателю для этого ГЕО
+        $cloakTemplate = 'expert_review';
+        foreach ($advertisers as $a) {
+            if (($a['status'] ?? '') === 'active') {
+                $geos = $a['geo'] ?? [];
+                if (empty($geos) || in_array($geo->getGeo(), $geos, true)) {
+                    $cloakTemplate = $a['template'] ?? 'expert_review';
+                    break;
+                }
+            }
+        }
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'cloaked');
-        renderCloak($cloakUrl);
+        renderCloak($cloakTemplate);
         break;
 
     case BotFilter::BOT:
@@ -75,17 +86,19 @@ switch ($filterResult) {
         $isTest = isset($_GET['test']) && $_GET['test'] === '1';
 
         if ($adv !== null) {
-            $ctx     = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
-            $clickId = $logger->log($ctx, 'sent');
-            $url     = SubIdBuilder::build($adv, $clickId);
+            $ctx      = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
+            $clickId  = $logger->log($ctx, 'sent');
+            $url      = SubIdBuilder::build($adv, $clickId);
+            $template = $adv['template'] ?? 'expert_review';
         } else {
             // Нет подходящего рекламодателя → дефолтный оффер
-            $ctx     = ClickLogger::buildContext($geo, $filter, null, $isTest);
-            $clickId = $logger->log($ctx, 'sent');
-            $url     = SubIdBuilder::buildDefault($defaultOfferUrl);
+            $ctx      = ClickLogger::buildContext($geo, $filter, null, $isTest);
+            $clickId  = $logger->log($ctx, 'sent');
+            $url      = SubIdBuilder::buildDefault($defaultOfferUrl);
+            $template = 'expert_review';
         }
 
-        redirectDelayed($url, $delayMs);
+        TemplateRenderer::renderOffer($template, $url, $delayMs);
         break;
 }
 
@@ -93,43 +106,6 @@ exit;
 
 // ── Функции вывода ────────────────────────────────────────────────────────
 
-/**
- * Редирект с небольшой задержкой (живой пользователь).
- * JS + meta fallback. Страница рендерится ДО редиректа.
- * Этап 3 заменит body на клоак-шаблон.
- */
-function redirectDelayed(string $url, int $delayMs): void
-{
-    if ($url === '') {
-        http_response_code(404);
-        exit;
-    }
-
-    $safeUrl   = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
-    $delayReal = max(500, $delayMs);
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="<?= (int)($delayReal / 1000) ?>;url=<?= $safeUrl ?>">
-<title>Loading...</title>
-<style>
-  body{margin:0;background:#111;display:flex;align-items:center;justify-content:center;height:100vh}
-  .loader{width:48px;height:48px;border:5px solid #333;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-</style>
-</head>
-<body>
-<div class="loader"></div>
-<script>
-  setTimeout(function(){window.location.href="<?= addslashes($url) ?>";},<?= $delayReal ?>);
-</script>
-</body>
-</html>
-<?php
-}
 
 /**
  * Мгновенный редирект (боты, VPN, Tor).
@@ -146,24 +122,8 @@ function redirectInstant(string $url): void
 
 /**
  * Отдаём клоак-страницу (легенду) для платформенных сканеров.
- * Этап 3: здесь будет подключаться шаблон по $advertiser['template'].
  */
-function renderCloak(string $fallbackUrl): void
+function renderCloak(string $template): void
 {
-    http_response_code(200);
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Expert Tips &amp; Reviews</title>
-<meta name="description" content="Professional tips, strategies and expert reviews.">
-</head>
-<body>
-<h1>Expert Tips &amp; Reviews</h1>
-<p>Welcome! Explore our expert articles and strategies.</p>
-</body>
-</html>
-<?php
+    TemplateRenderer::renderCloaked($template);
 }
