@@ -1,0 +1,22 @@
+# PreLend — crontab (пример)
+# Установить: crontab -e  и вставить строки ниже
+# PRELEND_ROOT — путь к проекту на VPS
+
+PRELEND=/var/www/prelend
+PYTHON=/usr/bin/python3
+LOGDIR=/var/www/prelend/logs
+
+# ── Мониторинг лендингов — каждые 5 минут ────────────────────────────────────
+*/5 * * * *   $PYTHON $PRELEND/monitor/health_check.py     >> $LOGDIR/health_check.log   2>&1
+
+# ── Ежедневный дайджест — каждый день в 09:00 UTC ────────────────────────────
+0 9 * * *     $PYTHON $PRELEND/monitor/daily_digest.py     >> $LOGDIR/daily_digest.log   2>&1
+
+# ── Детектор шейва — каждый день в 10:00 UTC ─────────────────────────────────
+0 10 * * *    $PYTHON $PRELEND/monitor/shave_detector.py   >> $LOGDIR/shave_detector.log 2>&1
+
+# ── Тестовые конверсии: отправка — воскресенье в 12:00 UTC ───────────────────
+0 12 * * 0    $PYTHON $PRELEND/monitor/test_conversions.py send   >> $LOGDIR/test_conv.log 2>&1
+
+# ── Тестовые конверсии: отчёт — понедельник в 09:30 UTC ──────────────────────
+30 9 * * 1    $PYTHON $PRELEND/monitor/test_conversions.py report >> $LOGDIR/test_conv.log 2>&1
