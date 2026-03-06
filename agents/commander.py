@@ -55,13 +55,16 @@ _PARSE_PROMPT = """Ты — помощник системы управления
 
 Формат ответа:
 {{
-  "intent": "одно из: status|list_adv|set_rate|add_adv|report|test_send|test_report|set_threshold|history|help|custom",
+  "intent": "одно из: status|list_adv|set_rate|add_adv|report|test_send|test_report|set_threshold|analyst|log_conv|history|help|custom",
   "params": {{"ключ": "значение"}},
   "advice": "совет оператору (1 предложение, на русском)",
   "requires_confirmation": false
 }}
 
-requires_confirmation = true только если команда меняет ставку или добавляет рекламодателя."""
+Правила:
+- analyst: запустить антишейв анализ; params: {{"force": true/false}}
+- log_conv: ввести конверсию вручную; params: {{"adv_id": "...", "date": "YYYY-MM-DD", "count": N}}
+- requires_confirmation = true только если меняет ставку или добавляет рекламодателя."""
 
 
 class CommandResult:
@@ -86,7 +89,8 @@ class Commander(BaseAgent):
 
     VALID_INTENTS = frozenset({
         "status", "list_adv", "set_rate", "add_adv", "report",
-        "test_send", "test_report", "set_threshold", "history", "help", "custom",
+        "test_send", "test_report", "set_threshold", "analyst",
+        "log_conv", "history", "help", "custom",
     })
 
     def __init__(
@@ -266,6 +270,23 @@ class Commander(BaseAgent):
             return {"intent": "test_send", "params": {}, "advice": "",
                     "requires_confirmation": False}
 
+        # analyst / антишейв
+        if any(w in low for w in ("analyst", "аналист", "антишейв", "шейв")):
+            force = "force" in low or "принудит" in low
+            return {"intent": "analyst", "params": {"force": force}, "advice": "",
+                    "requires_confirmation": False}
+
+        # конверсии adv_001 2024-01-15 3
+        m = re.match(r"конверси[ия]\s+(\S+)(?:\s+([\d-]+))?(?:\s+(\d+))?", low)
+        if m:
+            return {"intent": "log_conv",
+                    "params": {
+                        "adv_id": m.group(1),
+                        "date":   m.group(2) or "",
+                        "count":  int(m.group(3)) if m.group(3) else 1,
+                    },
+                    "advice": "", "requires_confirmation": False}
+
         if any(w in low for w in ("список", "рекламодател")):
             return {"intent": "list_adv", "params": {}, "advice": "",
                     "requires_confirmation": False}
@@ -288,6 +309,8 @@ class Commander(BaseAgent):
             "test_send":     lambda: self._cmd_test("send"),
             "test_report":   lambda: self._cmd_test("report"),
             "set_threshold": lambda: self._cmd_set_threshold(params),
+            "analyst":       lambda: self._cmd_analyst(params),
+            "log_conv":      lambda: self._cmd_log_conv(params),
             "history":       lambda: self._cmd_history(),
             "help":          lambda: self._cmd_help(),
             "custom":        lambda: f"✅ Команда записана: «{command}»",
@@ -507,6 +530,71 @@ class Commander(BaseAgent):
                               {"key": key, "old": old, "new": value})
         return f"✅ Порог <b>{kind}</b>: {old}% → <b>{value}%</b>"
 
+    def _cmd_analyst(self, params: Dict) -> str:
+        """Запускает ANALYST напрямую (через shave_detector → Analyst.analyze)."""
+        force = bool(params.get("force", False))
+        try:
+            import subprocess
+            cmd = ["python3", str(ROOT / "monitor" / "shave_detector.py"), "--analyst"]
+            if force:
+                cmd.append("--force")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if result.returncode == 0:
+                return f"✅ ANALYST запущен{'(force)' if force else ''}. Отчёт придёт в Telegram."
+            return f"❌ Ошибка ANALYST:\n{result.stderr[:300]}"
+        except subprocess.TimeoutExpired:
+            return "⚠️ ANALYST выполняется (>120с) — проверь Telegram"
+        except Exception as exc:
+            return f"❌ Ошибка: {exc}"
+
+    def _cmd_log_conv(self, params: Dict) -> str:
+        """
+        Ручной ввод конверсий в БД.
+        Формат: конверсия <adv_id> [YYYY-MM-DD] [count]
+        """
+        from datetime import date as _date
+        adv_id = params.get("adv_id", "")
+        conv_date = params.get("date") or _date.today().isoformat()
+        count  = int(params.get("count", 1))
+
+        if not adv_id:
+            return "❌ Укажи ID рекламодателя. Пример: конверсия adv_001 2024-01-15 3"
+
+        # Проверяем формат даты
+        import re as _re
+        if not _re.match(r"^\d{4}-\d{2}-\d{2}$", conv_date):
+            conv_date = _date.today().isoformat()
+
+        # Проверяем что рекламодатель существует
+        advertisers = self._load_advertisers()
+        if not any(a["id"] == adv_id for a in advertisers):
+            return f"❌ Рекламодатель не найден: <code>{adv_id}</code>"
+
+        settings = self._load_settings()
+        db_path  = settings.get("db_path", str(ROOT / "data" / "clicks.db"))
+
+        try:
+            import sqlite3, uuid as _uuid, time as _time
+            conv_id = str(_uuid.uuid4())
+            conn = sqlite3.connect(db_path)
+            conn.execute("""
+                INSERT INTO conversions (conv_id, date, advertiser_id, count, source, notes, created_at)
+                VALUES (?, ?, ?, ?, 'manual', 'commander_input', ?)
+            """, (conv_id, conv_date, adv_id, count, int(_time.time())))
+            conn.commit()
+            conn.close()
+        except Exception as exc:
+            return f"❌ Ошибка записи конверсии: {exc}"
+
+        self.memory.log_event("COMMANDER", "conv_logged",
+                              {"adv_id": adv_id, "date": conv_date, "count": count})
+        return (
+            f"✅ Конверсия записана\n"
+            f"Рекламодатель: <b>{adv_id}</b>\n"
+            f"Дата: {conv_date} | Кол-во: {count}\n"
+            f"ID: <code>{conv_id[:8]}...</code>"
+        )
+
     def _cmd_history(self) -> str:
         if not self._history:
             return "📋 История команд пуста"
@@ -519,12 +607,18 @@ class Commander(BaseAgent):
     def _cmd_help(self) -> str:
         return (
             "📖 <b>Команды /prelend:</b>\n\n"
+            "<b>Мониторинг:</b>\n"
             "• <code>статус</code> — состояние агентов и кликов\n"
-            "• <code>рекламодатели</code> — список + uptime\n"
+            "• <code>рекламодатели</code> — список + uptime + Score\n"
+            "• <code>отчёт [N]</code> — дайджест за N дней\n\n"
+            "<b>Антишейв:</b>\n"
+            "• <code>analyst</code> — запустить анализ шейва (Ollama)\n"
+            "• <code>analyst force</code> — принудительный отчёт\n"
+            "• <code>конверсия &lt;id&gt; [дата] [кол-во]</code> — ввести конверсию\n"
+            "• <code>тест отправить</code> — TEST_ конверсии (воскр.)\n"
+            "• <code>тест отчёт</code> — отчёт по TEST_\n\n"
+            "<b>Управление:</b>\n"
             "• <code>ставка &lt;id&gt; &lt;число&gt;</code> — изменить ставку\n"
-            "• <code>отчёт [N]</code> — дайджест за N дней\n"
-            "• <code>тест отправить</code> — TEST_ конверсии\n"
-            "• <code>тест отчёт</code> — отчёт по TEST_\n"
             "• <code>порог шейва &lt;%&gt;</code> — порог алерта шейва\n"
             "• <code>порог ботов &lt;%&gt;</code> — порог алерта ботов\n"
             "• <code>история</code> — последние 10 команд\n\n"

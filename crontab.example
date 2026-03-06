@@ -12,8 +12,8 @@ LOGDIR=/var/www/prelend/logs
 # ── Ежедневный дайджест — каждый день в 09:00 UTC ────────────────────────────
 0 9 * * *     $PYTHON $PRELEND/monitor/daily_digest.py     >> $LOGDIR/daily_digest.log   2>&1
 
-# ── Детектор шейва — каждый день в 10:00 UTC ─────────────────────────────────
-0 10 * * *    $PYTHON $PRELEND/monitor/shave_detector.py   >> $LOGDIR/shave_detector.log 2>&1
+# ── Детектор шейва + авто-запуск ANALYST — каждый день в 10:00 UTC ───────────
+0 10 * * *    $PYTHON $PRELEND/monitor/shave_detector.py --analyst >> $LOGDIR/shave_detector.log 2>&1
 
 # ── Тестовые конверсии: отправка — воскресенье в 12:00 UTC ───────────────────
 0 12 * * 0    $PYTHON $PRELEND/monitor/test_conversions.py send   >> $LOGDIR/test_conv.log 2>&1

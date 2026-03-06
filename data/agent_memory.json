@@ -1,11 +1,24 @@
 {
   "kv": {
-    "ollama_available": false
+    "ollama_available": false,
+    "report_commander": {
+      "ts": "2026-03-06T10:34:19",
+      "data": {
+        "last_command": "конверсия adv_001 2026-03-06 2",
+        "last_result": {
+          "command": "конверсия adv_001 2026-03-06 2",
+          "intent": "log_conv",
+          "executed": true,
+          "message": "❌ Ошибка записи конверсии: unable to open database file",
+          "ts": "2026-03-06T10:34:19"
+        }
+      }
+    }
   },
   "agents": {
     "COMMANDER": "IDLE",
     "ANALYST": "IDLE",
     "MONITOR": "IDLE"
   },
-  "saved_at": "2026-03-06T10:20:32"
+  "saved_at": "2026-03-06T10:34:19"
 }
