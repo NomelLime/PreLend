@@ -1,0 +1,11 @@
+{
+  "kv": {
+    "ollama_available": false
+  },
+  "agents": {
+    "COMMANDER": "IDLE",
+    "ANALYST": "IDLE",
+    "MONITOR": "IDLE"
+  },
+  "saved_at": "2026-03-06T10:20:32"
+}
