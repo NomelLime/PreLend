@@ -86,11 +86,8 @@ class Router
                 continue;
             }
 
-            // Device / time фильтры (передаём BotFilter)
-            $checkResult = $filter->check(new GeoDetector(), $adv);
-            // Если фильтр вернул не PASS — этот рекламодатель не подходит
-            // Но сам PASS мог уже быть установлен раньше; пересчёт только для adv-фильтров
-            if (!$this->passesAdvFilters($adv)) {
+            // Device / time фильтры
+            if (!$this->passesAdvFilters($adv, $device)) {
                 continue;
             }
 
@@ -106,20 +103,23 @@ class Router
     /**
      * Проверяет device и time без повторного запуска всего BotFilter.
      */
-    private function passesAdvFilters(array $adv): bool
+    private function passesAdvFilters(array $adv, string $device = ''): bool
     {
         // Device
         $allowed = $adv['device'] ?? [];
         if (!empty($allowed)) {
-            $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
-            if (preg_match('/tablet|ipad/i', $ua)) {
-                $dt = 'tablet';
-            } elseif (preg_match('/mobile|android|iphone|ipod/i', $ua)) {
-                $dt = 'mobile';
-            } else {
-                $dt = 'desktop';
+            // Используем явно переданный $device; если не передан — определяем из UA
+            if ($device === '') {
+                $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
+                if (preg_match('/tablet|ipad/i', $ua)) {
+                    $device = 'tablet';
+                } elseif (preg_match('/mobile|android|iphone|ipod/i', $ua)) {
+                    $device = 'mobile';
+                } else {
+                    $device = 'desktop';
+                }
             }
-            if (!in_array($dt, $allowed, true)) {
+            if (!in_array($device, $allowed, true)) {
                 return false;
             }
         }

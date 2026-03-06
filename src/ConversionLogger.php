@@ -123,15 +123,11 @@ class ConversionLogger
 
     private function isDuplicate(string $clickId, string $advId, string $date): bool
     {
+        // Если клик уже переведён в 'converted' — конверсия уже зачтена
         $stmt = $this->db->prepare(
-            "SELECT 1 FROM conversions
-             WHERE conv_id = ? OR (date = ? AND advertiser_id = ?
-             AND notes LIKE ? AND source = 'api')
-             LIMIT 1"
+            "SELECT 1 FROM clicks WHERE click_id = ? AND status = 'converted' LIMIT 1"
         );
-        // Проверяем как по conv_id так и по fingerprint
-        $fp = hash('sha256', $clickId . $advId . $date);
-        $stmt->execute([$fp, $date, $advId, "%{$clickId}%"]);
+        $stmt->execute([$clickId]);
         return (bool) $stmt->fetchColumn();
     }
 

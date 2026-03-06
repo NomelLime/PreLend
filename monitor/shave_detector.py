@@ -148,15 +148,15 @@ def calculate_shave(
             continue
 
         geo_key  = data["geo_key"]
-        peers_cr = [c for c in cr_by_geo.get(geo_key, []) if c != cr]
+        all_cr   = cr_by_geo.get(geo_key, [])
 
-        if not peers_cr:
+        if len(all_cr) < 2:
             data["shave_coef"] = 0.0
             data["median_cr"]  = cr
             data["verdict"]    = "no_peers"
             continue
 
-        med        = median(peers_cr + [cr])
+        med        = median(all_cr)
         shave_coef = max(0.0, (med - cr) / med) if med > 0 else 0.0
 
         data["shave_coef"] = round(shave_coef, 4)
@@ -190,8 +190,9 @@ def detect_conversion_patterns(report: dict) -> dict:
             flags.append("no_api_conversions")
 
         if daily:
-            recent_days  = sorted(daily.keys())[-3:]
-            recent_convs = sum(daily.get(d, 0) for d in recent_days)
+            from datetime import date as _date, timedelta
+            recent_dates = {(_date.today() - timedelta(days=i)).isoformat() for i in range(3)}
+            recent_convs = sum(daily.get(d, 0) for d in recent_dates)
             if total > 5 and recent_convs == 0:
                 flags.append("conversion_dropoff")
 
