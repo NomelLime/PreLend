@@ -1,0 +1,24 @@
+# PreLend .gitignore
+
+# БД и данные
+data/clicks.db
+data/clicks.db-wal
+data/clicks.db-shm
+
+# Логи
+logs/
+
+# Env и секреты
+.env
+status.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db

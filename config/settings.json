@@ -1,0 +1,29 @@
+{
+  "default_offer_url": "https://your-default-offer.example.com",
+  "cloak_url": "https://your-legend-page.example.com",
+
+  "db_path": "/var/www/prelend/data/clicks.db",
+  "log_path": "/var/www/prelend/logs/errors.log",
+
+  "alerts": {
+    "shave_threshold_pct": 25,
+    "bot_pct_per_hour": 40,
+    "offgeo_pct_per_hour": 60,
+    "landing_slow_ms": 2000
+  },
+
+  "test_conversion_prefix": "TEST_",
+
+  "cloudflare": {
+    "geo_header": "HTTP_CF_IPCOUNTRY",
+    "datacenter_header": "HTTP_CF_IPDATACENTERCOUNTRY"
+  },
+
+  "scoring": {
+    "min_uptime_to_activate": 50.0
+  },
+
+  "redirect_delay_ms": 1500,
+
+  "timezone": "UTC"
+}

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "adv_001",
+    "name": "AdventureOffers",
+    "url": "https://landing.example.com/offer1",
+    "rate": 4.50,
+    "geo": ["UA", "KZ", "BY"],
+    "subid_param": "sub1",
+    "status": "active",
+    "device": ["mobile"],
+    "time_from": "08:00",
+    "time_to": "23:00",
+    "template": "expert_review"
+  },
+  {
+    "id": "adv_002",
+    "name": "BetMasterAff",
+    "url": "https://bm-aff.example.com/click",
+    "rate": 5.00,
+    "geo": ["PL", "CZ", "RO", "HU"],
+    "subid_param": "subid",
+    "status": "active",
+    "device": [],
+    "time_from": "",
+    "time_to": "",
+    "template": "sports_news"
+  },
+  {
+    "id": "adv_003",
+    "name": "GlobalSlots",
+    "url": "https://gs-partners.example.com/go",
+    "rate": 3.20,
+    "geo": ["IN", "BR", "MX", "NG"],
+    "subid_param": "s1",
+    "status": "active",
+    "device": ["mobile"],
+    "time_from": "",
+    "time_to": "",
+    "template": "expert_review"
+  }
+]
