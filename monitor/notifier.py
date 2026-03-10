@@ -6,11 +6,20 @@ monitor/notifier.py — Telegram-уведомления для PreLend.
   - дедупликация (одно сообщение не чаще 5 мин)
   - thread-safe
 
+Режимы отправки:
+  PL_TELEGRAM_CRITICAL_ONLY=false (по умолчанию) — отправляются все уведомления
+  PL_TELEGRAM_CRITICAL_ONLY=true  — только критические (лендинг упал, пиковый бот%)
+                                     Устанавливается когда Orchestrator берёт на себя
+                                     стратегические уведомления (дайджест, шейв-отчёты).
+
+Критические вызовы: alert()  — всегда отправляется.
+Обычные вызовы:     send()   — фильтруется при CRITICAL_ONLY=true.
+
 Использование:
     from monitor.notifier import send, alert
 
-    send("📊 Дайджест готов")
-    alert("🔴 Лендинг упал: adv_001")
+    send("📊 Дайджест готов")          # фильтруется при CRITICAL_ONLY=true
+    alert("🔴 Лендинг упал: adv_001")  # всегда доставляется
 """
 from __future__ import annotations
 
@@ -30,6 +39,10 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID:   str = os.getenv("TELEGRAM_CHAT_ID", "")
 
+# Если True — отправляем только сообщения с critical=True.
+# Orchestrator читает данные напрямую и шлёт дайджест сам.
+_CRITICAL_ONLY: bool = os.getenv("PL_TELEGRAM_CRITICAL_ONLY", "false").lower() == "true"
+
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 _lock            = threading.Lock()
 _last_send_ts    = 0.0
@@ -38,14 +51,23 @@ _dedup_cache:    dict = {}      # hash → timestamp
 _dedup_window    = 300          # дедупликация 5 мин
 
 
-def send(message: str, parse_mode: str = "HTML") -> bool:
+def send(message: str, parse_mode: str = "HTML", critical: bool = False) -> bool:
     """
     Отправить сообщение в Telegram.
     Возвращает True при успехе.
+
+    Args:
+        critical: если True — отправляется всегда (даже при PL_TELEGRAM_CRITICAL_ONLY=true).
+                  Используется для алертов о падении лендингов и пиковом боте.
     """
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         logger.warning("[Notifier] Telegram не настроен (проверь .env)")
         return False
+
+    # Фильтр: при CRITICAL_ONLY пропускаем некритичные (дайджест, шейв-отчёты, тест-конверсии)
+    if _CRITICAL_ONLY and not critical:
+        logger.debug("[Notifier] Пропущено (PL_TELEGRAM_CRITICAL_ONLY=true, critical=False)")
+        return True  # не ошибка — Orchestrator возьмёт эти данные напрямую
 
     with _lock:
         global _last_send_ts
