@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import sys
 import time
@@ -52,6 +53,13 @@ def ts_range(day: date) -> tuple[int, int]:
 
 
 def run() -> None:
+    # PL_DISABLE_DAILY_DIGEST=true → дайджест PreLend отключён,
+    # Orchestrator включает эти данные в свой единый суточный дайджест.
+    if os.getenv("PL_DISABLE_DAILY_DIGEST", "false").lower() == "true":
+        logger.info("daily_digest отключён (PL_DISABLE_DAILY_DIGEST=true)"
+                    " — дайджест формирует Orchestrator")
+        return
+
     settings    = load_json(ROOT / "config" / "settings.json")
     advertisers = load_json(ROOT / "config" / "advertisers.json")
     db_path     = str(settings.get("db_path", ROOT / "data" / "clicks.db"))

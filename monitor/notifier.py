@@ -110,5 +110,9 @@ def send(message: str, parse_mode: str = "HTML", critical: bool = False) -> bool
         return False
 
 
-# Алиас — для семантического разграничения алертов и обычных сообщений
-alert = send
+def alert(message: str, parse_mode: str = "HTML") -> bool:
+    """
+    Критический алерт — всегда доставляется, игнорирует PL_TELEGRAM_CRITICAL_ONLY.
+    Используй для: лендинг упал, пиковый бот%, критические ошибки мониторинга.
+    """
+    return send(message, parse_mode=parse_mode, critical=True)

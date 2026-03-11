@@ -75,6 +75,10 @@ ALLOWED_USERS  = set(
     if x.strip()
 )
 
+# PL_DISABLE_TELEGRAM_POLLING=true → Orchestrator единственный принимает команды.
+# PreLend продолжает слать критические алерты (notifier.alert()), но не читает входящие.
+_DISABLE_POLLING: bool = os.getenv("PL_DISABLE_TELEGRAM_POLLING", "false").lower() == "true"
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PreLend Crew — обёртка над тремя агентами
@@ -402,7 +406,7 @@ def main() -> None:
 
     # ── Polling ───────────────────────────────────────────────────────────────
     polling_started = False
-    if TG_TOKEN and TG_CHAT_ID and not args.no_telegram:
+    if TG_TOKEN and TG_CHAT_ID and not args.no_telegram and not _DISABLE_POLLING:
         t = threading.Thread(
             target=polling_loop,
             args=(prelend, shorts, TG_TOKEN, TG_CHAT_ID),
@@ -412,6 +416,9 @@ def main() -> None:
         t.start()
         polling_started = True
         logger.info("Telegram polling поток запущен")
+    elif _DISABLE_POLLING:
+        logger.info("Telegram polling отключён (PL_DISABLE_TELEGRAM_POLLING=true)"
+                    " — команды принимает Orchestrator")
     else:
         logger.info("Telegram polling отключён")
 
