@@ -168,7 +168,7 @@ class Analyst(BaseAgent):
         enriched = dict(report)  # копируем
 
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=5.0)
             conn.row_factory = sqlite3.Row
 
             for adv_id in enriched:
@@ -255,8 +255,22 @@ class Analyst(BaseAgent):
             raw = raw.lstrip("```json").lstrip("```").rstrip("```").strip()
 
             result = json.loads(raw)
+
+            # Минимальная schema validation — защита от malformed LLM-ответа
+            if not isinstance(result, dict):
+                raise ValueError("Ollama вернул не dict")
+            verdicts = result.get("verdicts")
+            if verdicts is not None and not isinstance(verdicts, dict):
+                raise ValueError("'verdicts' должен быть dict")
+            # Проверяем структуру каждого вердикта
+            for adv_id, v in (verdicts or {}).items():
+                if not isinstance(v, dict):
+                    raise ValueError(f"Вердикт для {adv_id} не является dict")
+                if "verdict" not in v:
+                    raise ValueError(f"Нет поля 'verdict' для {adv_id}")
+
             self.logger.info("[ANALYST] Ollama вернул вердикты: %s",
-                             list(result.get("verdicts", {}).keys()))
+                             list((verdicts or {}).keys()))
             return result
 
         except ImportError:

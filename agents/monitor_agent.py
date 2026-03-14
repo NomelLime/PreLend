@@ -24,6 +24,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import ipaddress
+import socket
+import urllib.parse
+
 import requests
 
 from agents.base_agent import BaseAgent, AgentStatus
@@ -88,16 +92,18 @@ class Monitor(BaseAgent):
         settings    = self._load_settings()
         db_path     = settings.get("db_path", str(ROOT / "data" / "clicks.db"))
 
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=5.0)
         conn.row_factory = sqlite3.Row
 
-        for adv in advertisers:
-            if adv.get("status") != "active":
-                continue
-            self._check_landing(adv, conn)
+        try:
+            for adv in advertisers:
+                if adv.get("status") != "active":
+                    continue
+                self._check_landing(adv, conn)
 
-        self._check_traffic_quality(conn, settings)
-        conn.close()
+            self._check_traffic_quality(conn, settings)
+        finally:
+            conn.close()
 
         # Обновляем отчёт агента
         self.report({
@@ -228,7 +234,35 @@ class Monitor(BaseAgent):
 
     # ── Вспомогательные методы ────────────────────────────────────────────────
 
+    @staticmethod
+    def _is_safe_url(url: str) -> bool:
+        """
+        Защита от SSRF: разрешаем только HTTP/HTTPS и внешние IP.
+        Блокируем: localhost, приватные сети, link-local, loopback.
+        """
+        try:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return False
+            host = parsed.hostname or ""
+            if not host:
+                return False
+            # Резолвим хост в IP
+            addr = ipaddress.ip_address(socket.gethostbyname(host))
+            return (
+                not addr.is_loopback and
+                not addr.is_private and
+                not addr.is_link_local and
+                not addr.is_multicast and
+                not addr.is_reserved
+            )
+        except Exception:
+            return False
+
     def _head_request(self, url: str) -> Tuple[bool, int]:
+        if not self._is_safe_url(url):
+            self.logger.warning("[MONITOR] SSRF заблокирован: %s", url)
+            return False, -1
         try:
             start = time.time()
             resp  = requests.head(

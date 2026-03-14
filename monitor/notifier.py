@@ -103,10 +103,13 @@ def send(message: str, parse_mode: str = "HTML", critical: bool = False) -> bool
         )
         ok = resp.status_code == 200
         if not ok:
-            logger.warning("[Notifier] Telegram %d: %s", resp.status_code, resp.text[:200])
+            # Логируем только status code и тело — токен в URL не попадает в лог
+            logger.warning("[Notifier] Telegram API %d: %s", resp.status_code, resp.text[:200])
         return ok
-    except Exception as exc:
-        logger.error("[Notifier] Ошибка отправки: %s", exc)
+    except requests.exceptions.RequestException as exc:
+        # Маскируем токен из строки исключения на случай если он туда попал
+        exc_str = str(exc).replace(TELEGRAM_BOT_TOKEN, "***") if TELEGRAM_BOT_TOKEN else str(exc)
+        logger.error("[Notifier] Ошибка отправки: %s", exc_str)
         return False
 
 

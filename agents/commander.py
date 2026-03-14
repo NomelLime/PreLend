@@ -346,7 +346,7 @@ class Commander(BaseAgent):
         # Клики за последние 24 часа
         since = int(time.time()) - 86400
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=5.0)
             row  = conn.execute(
                 "SELECT COUNT(*) FROM clicks WHERE ts >= ? AND is_test = 0", (since,)
             ).fetchone()
@@ -379,7 +379,7 @@ class Commander(BaseAgent):
                 continue
 
             try:
-                conn = sqlite3.connect(db_path)
+                conn = sqlite3.connect(db_path, timeout=5.0)
                 ls   = conn.execute(
                     "SELECT is_up, uptime_24h FROM landing_status WHERE advertiser_id = ?",
                     (adv["id"],)
@@ -410,13 +410,21 @@ class Commander(BaseAgent):
         if not adv_id or rate is None:
             return "❌ Укажи: ставка <adv_id> <число>"
 
+        try:
+            rate_f = float(rate)
+        except (TypeError, ValueError):
+            return "❌ Ставка должна быть числом"
+
+        if not (0.01 <= rate_f <= 1000.0):
+            return "❌ Ставка должна быть в диапазоне 0.01 — 1000"
+
         advertisers = self._load_advertisers()
         found       = False
 
         for adv in advertisers:
             if adv["id"] == adv_id:
                 old_rate    = adv["rate"]
-                adv["rate"] = float(rate)
+                adv["rate"] = rate_f
                 found       = True
                 break
 
@@ -429,7 +437,7 @@ class Commander(BaseAgent):
         settings = self._load_settings()
         db_path  = settings.get("db_path", str(ROOT / "data" / "clicks.db"))
         try:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=5.0)
             conn.execute(
                 "INSERT INTO advertiser_rates (advertiser_id, rate, changed_at, changed_by) VALUES (?,?,?,?)",
                 (adv_id, float(rate), int(time.time()), "commander")
@@ -454,6 +462,20 @@ class Commander(BaseAgent):
         if missing:
             return f"❌ Не хватает полей: {', '.join(missing)}"
 
+        # Валидация rate
+        try:
+            rate_f = float(params["rate"])
+        except (TypeError, ValueError):
+            return "❌ rate должен быть числом"
+        if not (0.01 <= rate_f <= 1000.0):
+            return "❌ rate должен быть в диапазоне 0.01 — 1000"
+
+        # Валидация URL (только http/https, без приватных адресов)
+        import urllib.parse as _urlparse
+        parsed_url = _urlparse.urlparse(str(params.get("url", "")))
+        if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+            return "❌ url должен быть абсолютным HTTP/HTTPS адресом"
+
         advertisers = self._load_advertisers()
         # Проверяем уникальность ID
         if any(a["id"] == params["id"] for a in advertisers):
@@ -463,7 +485,7 @@ class Commander(BaseAgent):
             "id":          params["id"],
             "name":        params["name"],
             "url":         params["url"],
-            "rate":        float(params["rate"]),
+            "rate":        rate_f,
             "geo":         params["geo"] if isinstance(params["geo"], list) else [params["geo"]],
             "subid_param": params["subid_param"],
             "status":      params.get("status", "active"),
@@ -576,7 +598,7 @@ class Commander(BaseAgent):
         try:
             import sqlite3, uuid as _uuid, time as _time
             conv_id = str(_uuid.uuid4())
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=5.0)
             conn.execute("""
                 INSERT INTO conversions (conv_id, date, advertiser_id, count, source, notes, created_at)
                 VALUES (?, ?, ?, ?, 'manual', 'commander_input', ?)
