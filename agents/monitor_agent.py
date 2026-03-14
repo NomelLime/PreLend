@@ -229,7 +229,7 @@ class Monitor(BaseAgent):
                 self.memory.log_event("MONITOR", "high_offgeo",
                                       {"offgeo_pct": offgeo_pct, "total": total})
 
-        except Exception as exc:
+        except (sqlite3.Error, OSError) as exc:
             self.logger.warning("[MONITOR] Ошибка проверки трафика: %s", exc)
 
     # ── Вспомогательные методы ────────────────────────────────────────────────
@@ -324,9 +324,17 @@ class Monitor(BaseAgent):
                 self.logger.debug("[MONITOR] Триггер ANALYST: %s", exc)
 
     def _load_advertisers(self) -> List[Dict]:
-        with open(CFG_ADV, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CFG_ADV, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            self.logger.warning("[MONITOR] Ошибка чтения advertisers: %s", exc)
+            return []
 
     def _load_settings(self) -> Dict:
-        with open(CFG_SET, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CFG_SET, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            self.logger.warning("[MONITOR] Ошибка чтения settings: %s", exc)
+            return {}

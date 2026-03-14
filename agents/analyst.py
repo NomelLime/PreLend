@@ -155,7 +155,7 @@ class Analyst(BaseAgent):
             with open(SHAVE_REPORT_FILE, encoding="utf-8") as f:
                 data = json.load(f)
             return data.get("report", {})
-        except Exception as exc:
+        except (json.JSONDecodeError, OSError) as exc:
             self.logger.warning("[ANALYST] Ошибка чтения shave_report: %s", exc)
             return None
 
@@ -167,6 +167,7 @@ class Analyst(BaseAgent):
 
         enriched = dict(report)  # копируем
 
+        conn = None
         try:
             conn = sqlite3.connect(db_path, timeout=5.0)
             conn.row_factory = sqlite3.Row
@@ -205,10 +206,11 @@ class Analyst(BaseAgent):
                 enriched[adv_id]["clicks_by_platform"] = {
                     r["platform"]: r["clicks"] for r in rows
                 }
-
-            conn.close()
-        except Exception as exc:
+        except (sqlite3.Error, OSError) as exc:
             self.logger.warning("[ANALYST] Ошибка обогащения данных: %s", exc)
+        finally:
+            if conn:
+                conn.close()
 
         return enriched
 
@@ -356,5 +358,9 @@ class Analyst(BaseAgent):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _load_settings(self) -> Dict:
-        with open(CFG_SET, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CFG_SET, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            self.logger.warning("[ANALYST] Ошибка чтения settings: %s", exc)
+            return {}

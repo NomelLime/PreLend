@@ -346,13 +346,12 @@ class Commander(BaseAgent):
         # Клики за последние 24 часа
         since = int(time.time()) - 86400
         try:
-            conn = sqlite3.connect(db_path, timeout=5.0)
-            row  = conn.execute(
-                "SELECT COUNT(*) FROM clicks WHERE ts >= ? AND is_test = 0", (since,)
-            ).fetchone()
-            clicks_24h = row[0] if row else 0
-            conn.close()
-        except Exception:
+            with sqlite3.connect(db_path, timeout=5.0) as conn:
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM clicks WHERE ts >= ? AND is_test = 0", (since,)
+                ).fetchone()
+                clicks_24h = row[0] if row else 0
+        except (sqlite3.Error, OSError):
             clicks_24h = "?"
 
         emoji_map = {"IDLE": "⚪", "RUNNING": "🟢", "ERROR": "🔴", "STOPPED": "⛔"}
@@ -379,13 +378,12 @@ class Commander(BaseAgent):
                 continue
 
             try:
-                conn = sqlite3.connect(db_path, timeout=5.0)
-                ls   = conn.execute(
-                    "SELECT is_up, uptime_24h FROM landing_status WHERE advertiser_id = ?",
-                    (adv["id"],)
-                ).fetchone()
-                conn.close()
-            except Exception:
+                with sqlite3.connect(db_path, timeout=5.0) as conn:
+                    ls = conn.execute(
+                        "SELECT is_up, uptime_24h FROM landing_status WHERE advertiser_id = ?",
+                        (adv["id"],)
+                    ).fetchone()
+            except (sqlite3.Error, OSError):
                 ls = None
 
             flag   = "🟢" if (ls and ls[0]) else "🔴" if ls else "⚪"
@@ -437,14 +435,12 @@ class Commander(BaseAgent):
         settings = self._load_settings()
         db_path  = settings.get("db_path", str(ROOT / "data" / "clicks.db"))
         try:
-            conn = sqlite3.connect(db_path, timeout=5.0)
-            conn.execute(
-                "INSERT INTO advertiser_rates (advertiser_id, rate, changed_at, changed_by) VALUES (?,?,?,?)",
-                (adv_id, float(rate), int(time.time()), "commander")
-            )
-            conn.commit()
-            conn.close()
-        except Exception as exc:
+            with sqlite3.connect(db_path, timeout=5.0) as conn:
+                conn.execute(
+                    "INSERT INTO advertiser_rates (advertiser_id, rate, changed_at, changed_by) VALUES (?,?,?,?)",
+                    (adv_id, float(rate), int(time.time()), "commander")
+                )
+        except (sqlite3.Error, OSError) as exc:
             self.logger.warning("[COMMANDER] Не удалось записать историю ставки: %s", exc)
 
         self.memory.log_event("COMMANDER", "rate_changed",
@@ -598,14 +594,12 @@ class Commander(BaseAgent):
         try:
             import sqlite3, uuid as _uuid, time as _time
             conv_id = str(_uuid.uuid4())
-            conn = sqlite3.connect(db_path, timeout=5.0)
-            conn.execute("""
-                INSERT INTO conversions (conv_id, date, advertiser_id, count, source, notes, created_at)
-                VALUES (?, ?, ?, ?, 'manual', 'commander_input', ?)
-            """, (conv_id, conv_date, adv_id, count, int(_time.time())))
-            conn.commit()
-            conn.close()
-        except Exception as exc:
+            with sqlite3.connect(db_path, timeout=5.0) as conn:
+                conn.execute("""
+                    INSERT INTO conversions (conv_id, date, advertiser_id, count, source, notes, created_at)
+                    VALUES (?, ?, ?, ?, 'manual', 'commander_input', ?)
+                """, (conv_id, conv_date, adv_id, count, int(_time.time())))
+        except (sqlite3.Error, OSError) as exc:
             return f"❌ Ошибка записи конверсии: {exc}"
 
         self.memory.log_event("COMMANDER", "conv_logged",
@@ -650,17 +644,47 @@ class Commander(BaseAgent):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _load_advertisers(self) -> List[Dict]:
-        with open(CFG_ADV, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CFG_ADV, encoding="utf-8") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+            self.logger.error("[COMMANDER] Не удалось загрузить advertisers.json: %s", e)
+            return []
 
     def _save_advertisers(self, data: List[Dict]) -> None:
-        with open(CFG_ADV, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        """Атомарная запись advertisers.json (tempfile + os.replace)."""
+        import os, tempfile
+        fd, tmp_path = tempfile.mkstemp(dir=str(CFG_ADV.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, str(CFG_ADV))
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def _load_settings(self) -> Dict:
-        with open(CFG_SET, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CFG_SET, encoding="utf-8") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+            self.logger.error("[COMMANDER] Не удалось загрузить settings.json: %s", e)
+            return {}
 
     def _save_settings(self, data: Dict) -> None:
-        with open(CFG_SET, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        """Атомарная запись settings.json (tempfile + os.replace)."""
+        import os, tempfile
+        fd, tmp_path = tempfile.mkstemp(dir=str(CFG_SET.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, str(CFG_SET))
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise

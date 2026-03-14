@@ -26,8 +26,10 @@ import argparse
 import calendar
 import json
 import logging
+import os
 import sqlite3
 import sys
+import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -51,8 +53,12 @@ MIN_CLICKS        = 30
 # ── Утилиты ───────────────────────────────────────────────────────────────────
 
 def load_json(path: Path) -> dict | list:
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.error("Ошибка чтения %s: %s", path, exc)
+        raise
 
 
 def get_db(db_path: str) -> sqlite3.Connection:
@@ -237,8 +243,10 @@ def run(trigger_analyst: bool = False, force: bool = False) -> None:
     adv_map = {a["id"]: a for a in advertisers if a.get("status") == "active"}
 
     # 1. Сбор данных
-    report, cr_by_geo = collect_cr_data(conn, adv_map, ts_since)
-    conn.close()
+    try:
+        report, cr_by_geo = collect_cr_data(conn, adv_map, ts_since)
+    finally:
+        conn.close()
 
     # 2. Расчёт шейва
     report, suspects = calculate_shave(report, cr_by_geo, threshold)
@@ -249,15 +257,24 @@ def run(trigger_analyst: bool = False, force: bool = False) -> None:
         if flags:
             report[adv_id]["pattern_flags"] = flags
 
-    # 4. Сохраняем shave_report.json
+    # 4. Сохраняем shave_report.json (атомарная запись)
     SHAVE_REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(SHAVE_REPORT_FILE, "w", encoding="utf-8") as f:
-        json.dump({
-            "generated_at":  date.today().isoformat(),
-            "analysis_days": ANALYSIS_DAYS,
-            "threshold":     threshold,
-            "report":        report,
-        }, f, ensure_ascii=False, indent=2)
+    fd, tmp_path = tempfile.mkstemp(dir=str(SHAVE_REPORT_FILE.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp_f:
+            json.dump({
+                "generated_at":  date.today().isoformat(),
+                "analysis_days": ANALYSIS_DAYS,
+                "threshold":     threshold,
+                "report":        report,
+            }, tmp_f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, str(SHAVE_REPORT_FILE))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
     logger.info("shave_report.json сохранён (%d рекламодателей)", len(report))
 

@@ -43,8 +43,12 @@ logger = logging.getLogger(__name__)
 
 
 def load_json(path: Path) -> dict | list:
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.error("Ошибка чтения %s: %s", path, exc)
+        raise
 
 
 def get_db(db_path: str) -> sqlite3.Connection:
@@ -121,48 +125,49 @@ def run() -> None:
     slow_ms     = int(settings.get("alerts", {}).get("landing_slow_ms", 2000))
 
     conn = get_db(db_path)
+    try:
+        for adv in advertisers:
+            if adv.get("status") != "active":
+                continue
 
-    for adv in advertisers:
-        if adv.get("status") != "active":
-            continue
+            adv_id   = adv["id"]
+            adv_name = adv["name"]
+            url      = adv["url"]
 
-        adv_id   = adv["id"]
-        adv_name = adv["name"]
-        url      = adv["url"]
+            prev_up = get_prev_status(conn, adv_id)
+            is_up, ms = check_landing(url)
+            uptime_24h = calc_uptime_24h(conn, adv_id)
 
-        prev_up = get_prev_status(conn, adv_id)
-        is_up, ms = check_landing(url)
-        uptime_24h = calc_uptime_24h(conn, adv_id)
+            update_status(conn, adv_id, is_up, ms, uptime_24h)
 
-        update_status(conn, adv_id, is_up, ms, uptime_24h)
+            logger.info("[%s] %s | is_up=%s | %dms | uptime=%.1f%%",
+                        adv_id, adv_name, is_up, ms, uptime_24h)
 
-        logger.info("[%s] %s | is_up=%s | %dms | uptime=%.1f%%",
-                    adv_id, adv_name, is_up, ms, uptime_24h)
+            # ── Алерты ────────────────────────────────────────────────────
+            if not is_up and (prev_up is None or prev_up):
+                alert(
+                    f"🔴 <b>Лендинг упал!</b>\n"
+                    f"Рекламодатель: <b>{adv_name}</b> (<code>{adv_id}</code>)\n"
+                    f"URL: {url}\n"
+                    f"Uptime 24h: {uptime_24h:.1f}%"
+                )
 
-        # ── Алерты ────────────────────────────────────────────────────
-        if not is_up and (prev_up is None or prev_up):
-            alert(
-                f"🔴 <b>Лендинг упал!</b>\n"
-                f"Рекламодатель: <b>{adv_name}</b> (<code>{adv_id}</code>)\n"
-                f"URL: {url}\n"
-                f"Uptime 24h: {uptime_24h:.1f}%"
-            )
+            elif is_up and prev_up is False:
+                alert(
+                    f"🟢 <b>Лендинг восстановлен</b>\n"
+                    f"Рекламодатель: <b>{adv_name}</b> (<code>{adv_id}</code>)\n"
+                    f"Время ответа: {ms} мс"
+                )
 
-        elif is_up and prev_up is False:
-            alert(
-                f"🟢 <b>Лендинг восстановлен</b>\n"
-                f"Рекламодатель: <b>{adv_name}</b> (<code>{adv_id}</code>)\n"
-                f"Время ответа: {ms} мс"
-            )
+            elif is_up and ms > slow_ms:
+                alert(
+                    f"🟡 <b>Лендинг медленно отвечает</b>\n"
+                    f"Рекламодатель: <b>{adv_name}</b> (<code>{adv_id}</code>)\n"
+                    f"Время ответа: <b>{ms} мс</b> (порог: {slow_ms} мс)"
+                )
+    finally:
+        conn.close()
 
-        elif is_up and ms > slow_ms:
-            alert(
-                f"🟡 <b>Лендинг медленно отвечает</b>\n"
-                f"Рекламодатель: <b>{adv_name}</b> (<code>{adv_id}</code>)\n"
-                f"Время ответа: <b>{ms} мс</b> (порог: {slow_ms} мс)"
-            )
-
-    conn.close()
     logger.info("health_check завершён")
 
 
