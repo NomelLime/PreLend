@@ -10,7 +10,14 @@
     "device": ["mobile"],
     "time_from": "08:00",
     "time_to": "23:00",
-    "template": "expert_review"
+    "template": "expert_review",
+    "backup_offer_id": "adv_003",
+    "cr_threshold_pct": 3.0,
+    "cr_rotation_days": 3,
+    "cr_rotation_enabled": false,
+    "hmac_secret": "",
+    "allowed_ips": [],
+    "max_postbacks_per_min": 60
   },
   {
     "id": "adv_002",
@@ -23,7 +30,14 @@
     "device": [],
     "time_from": "",
     "time_to": "",
-    "template": "sports_news"
+    "template": "sports_news",
+    "backup_offer_id": null,
+    "cr_threshold_pct": 3.0,
+    "cr_rotation_days": 3,
+    "cr_rotation_enabled": false,
+    "hmac_secret": "",
+    "allowed_ips": [],
+    "max_postbacks_per_min": 60
   },
   {
     "id": "adv_003",
@@ -36,6 +50,13 @@
     "device": ["mobile"],
     "time_from": "",
     "time_to": "",
-    "template": "expert_review"
+    "template": "expert_review",
+    "backup_offer_id": null,
+    "cr_threshold_pct": 3.0,
+    "cr_rotation_days": 3,
+    "cr_rotation_enabled": false,
+    "hmac_secret": "",
+    "allowed_ips": [],
+    "max_postbacks_per_min": 60
   }
 ]

@@ -71,3 +71,20 @@ CREATE TABLE IF NOT EXISTS landing_status (
     is_up           INTEGER NOT NULL DEFAULT 1, -- 0 | 1
     uptime_24h      REAL NOT NULL DEFAULT 100.0 -- процент за 24 часа
 );
+
+-- ─────────────────────────────────────────
+--  split_results  (A/B split-test results)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS split_results (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts              INTEGER NOT NULL,              -- Unix timestamp события
+    split_id        TEXT NOT NULL,                 -- ID теста из splits.json
+    variant_id      TEXT NOT NULL,                 -- ID варианта ('var_a', 'var_b', ...)
+    geo             TEXT,                          -- ISO-2
+    click_id        TEXT,                          -- FK к clicks.click_id
+    converted       INTEGER NOT NULL DEFAULT 0     -- 0 | 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_split_results_split   ON split_results(split_id);
+CREATE INDEX IF NOT EXISTS idx_split_results_variant ON split_results(split_id, variant_id);
+CREATE INDEX IF NOT EXISTS idx_split_results_ts      ON split_results(ts);

@@ -64,7 +64,7 @@ switch ($filterResult) {
         }
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'cloaked');
-        renderCloak($cloakTemplate);
+        renderCloak($cloakTemplate, $geo->getGeo());
         break;
 
     case BotFilter::BOT:
@@ -98,7 +98,15 @@ switch ($filterResult) {
             $template = 'expert_review';
         }
 
-        TemplateRenderer::renderOffer($template, $url, $delayMs);
+        // A/B split-тест: проверяем есть ли активный тест для этого ГЕО
+        $splitTester = new SplitTester($db);
+        $splitVariant = $splitTester->assign($geo->getGeo(), $clickId ?? '');
+        if ($splitVariant !== null && !$isTest) {
+            // Используем шаблон из варианта split-теста
+            $template = $splitVariant['template'] ?? $template;
+        }
+
+        TemplateRenderer::renderOffer($template, $url, $delayMs, [], $geo->getGeo());
         break;
 }
 
@@ -123,7 +131,11 @@ function redirectInstant(string $url): void
 /**
  * Отдаём клоак-страницу (легенду) для платформенных сканеров.
  */
-function renderCloak(string $template): void
+function renderCloak(string $template, string $geo = ''): void
 {
-    TemplateRenderer::renderCloaked($template);
+    if ($geo !== '') {
+        TemplateRenderer::renderCloakedGeo($template, $geo);
+    } else {
+        TemplateRenderer::renderCloaked($template);
+    }
 }

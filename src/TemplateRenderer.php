@@ -38,12 +38,30 @@ class TemplateRenderer
         string $template,
         string $targetUrl,
         int    $delayMs = 1500,
-        array  $vars    = []
+        array  $vars    = [],
+        string $geo     = ''
     ): void {
         $vars['target_url'] = $targetUrl;
         $vars['delay_ms']   = max(500, $delayMs);
         $vars['delay_sec']  = (int) ceil($delayMs / 1000);
+        // Инжектируем гео-контекст если передан код страны
+        if ($geo !== '') {
+            $geoCtx = GeoAdapter::context($geo);
+            $vars   = array_merge($geoCtx, $vars);
+        }
         self::render('offers', $template, $vars);
+    }
+
+    /**
+     * Рендерит cloaked-страницу с гео-адаптацией.
+     */
+    public static function renderCloakedGeo(string $template, string $geo, array $vars = []): void
+    {
+        if ($geo !== '') {
+            $geoCtx = GeoAdapter::context($geo);
+            $vars   = array_merge($geoCtx, $vars);
+        }
+        self::render('cloaked', $template, $vars);
     }
 
     // ── Приватные методы ──────────────────────────────────────────────────

@@ -1,0 +1,122 @@
+{
+  "UA": {
+    "currency": "₴",
+    "currency_name": "гривня",
+    "city": "Київ",
+    "reviewer": "Олексій",
+    "phone_prefix": "+380",
+    "lang": "uk"
+  },
+  "RU": {
+    "currency": "₽",
+    "currency_name": "рублей",
+    "city": "Москва",
+    "reviewer": "Алексей",
+    "phone_prefix": "+7",
+    "lang": "ru"
+  },
+  "KZ": {
+    "currency": "₸",
+    "currency_name": "тенге",
+    "city": "Алматы",
+    "reviewer": "Ахмет",
+    "phone_prefix": "+7",
+    "lang": "ru"
+  },
+  "BY": {
+    "currency": "Br",
+    "currency_name": "рублей",
+    "city": "Минск",
+    "reviewer": "Иван",
+    "phone_prefix": "+375",
+    "lang": "ru"
+  },
+  "PL": {
+    "currency": "zł",
+    "currency_name": "złotych",
+    "city": "Warszawa",
+    "reviewer": "Marek",
+    "phone_prefix": "+48",
+    "lang": "pl"
+  },
+  "CZ": {
+    "currency": "Kč",
+    "currency_name": "korun",
+    "city": "Praha",
+    "reviewer": "Tomáš",
+    "phone_prefix": "+420",
+    "lang": "cs"
+  },
+  "RO": {
+    "currency": "lei",
+    "currency_name": "lei",
+    "city": "București",
+    "reviewer": "Andrei",
+    "phone_prefix": "+40",
+    "lang": "ro"
+  },
+  "HU": {
+    "currency": "Ft",
+    "currency_name": "forint",
+    "city": "Budapest",
+    "reviewer": "Péter",
+    "phone_prefix": "+36",
+    "lang": "hu"
+  },
+  "IN": {
+    "currency": "₹",
+    "currency_name": "rupees",
+    "city": "Mumbai",
+    "reviewer": "Rahul",
+    "phone_prefix": "+91",
+    "lang": "en"
+  },
+  "BR": {
+    "currency": "R$",
+    "currency_name": "reais",
+    "city": "São Paulo",
+    "reviewer": "Carlos",
+    "phone_prefix": "+55",
+    "lang": "pt"
+  },
+  "MX": {
+    "currency": "$",
+    "currency_name": "pesos",
+    "city": "Ciudad de México",
+    "reviewer": "Miguel",
+    "phone_prefix": "+52",
+    "lang": "es"
+  },
+  "NG": {
+    "currency": "₦",
+    "currency_name": "naira",
+    "city": "Lagos",
+    "reviewer": "Emmanuel",
+    "phone_prefix": "+234",
+    "lang": "en"
+  },
+  "DE": {
+    "currency": "€",
+    "currency_name": "Euro",
+    "city": "Berlin",
+    "reviewer": "Klaus",
+    "phone_prefix": "+49",
+    "lang": "de"
+  },
+  "TR": {
+    "currency": "₺",
+    "currency_name": "lira",
+    "city": "İstanbul",
+    "reviewer": "Mehmet",
+    "phone_prefix": "+90",
+    "lang": "tr"
+  },
+  "_default": {
+    "currency": "$",
+    "currency_name": "dollars",
+    "city": "New York",
+    "reviewer": "Alex",
+    "phone_prefix": "+1",
+    "lang": "en"
+  }
+}
