@@ -133,7 +133,7 @@ if ($maxPerMin > 0) {
     $rateStmt = $db->prepare(
         "SELECT COUNT(*) FROM conversions
          WHERE advertiser_id = ? AND source = 'api'
-           AND created_at >= strftime('%s', 'now') - 60"
+           AND created_at >= CAST(strftime('%s', 'now') AS INTEGER) - 60"
     );
     $rateStmt->execute([$advId]);
     $recent = (int)$rateStmt->fetchColumn();
