@@ -126,17 +126,16 @@ if ($hmacSecret !== '') {
 }
 
 // ── Rate limiting ──────────────────────────────────────────────────────────────
-// Считаем постбэки от этого adv_id за последние 60 секунд в таблице conversions
+// Считаем постбэки от этого adv_id за последние 60 секунд по полю created_at (Unix timestamp)
 $maxPerMin = (int)($advConfig['max_postbacks_per_min'] ?? 60);
 if ($maxPerMin > 0) {
     $db = DB::get();
-    // Считаем постбэки за последние 60 секунд: смотрим последние $maxPerMin записей
-    // и проверяем есть ли там уже лимит от этого рекламодателя.
-    // Для production рекомендуется отдельная таблица с timestamp-индексом.
     $rateStmt = $db->prepare(
-        "SELECT COUNT(*) FROM conversions WHERE advertiser_id = ? AND source = 'api' AND date = date('now') AND id > (SELECT COALESCE(MAX(id), 0) - ? FROM conversions)"
+        "SELECT COUNT(*) FROM conversions
+         WHERE advertiser_id = ? AND source = 'api'
+           AND created_at >= strftime('%s', 'now') - 60"
     );
-    $rateStmt->execute([$advId, $maxPerMin]);
+    $rateStmt->execute([$advId]);
     $recent = (int)$rateStmt->fetchColumn();
     if ($recent >= $maxPerMin) {
         http_response_code(429);
