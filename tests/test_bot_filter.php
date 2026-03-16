@@ -123,6 +123,24 @@ test('PASS — Windows Chrome desktop', function () {
     assert_eq(BotFilter::PASS, $f->check($geo));
 });
 
+// ── OFFGEO / OFFHOURS ─────────────────────────────────────────────────────────
+test('OFFGEO — запрос с ГЕО не из списка рекламодателя не попадает в PASS', function () {
+    [$f, $geo] = make_filter_geo([
+        'HTTP_CF_IPCOUNTRY' => 'JP',
+        'HTTP_USER_AGENT'   => 'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36',
+        'REMOTE_ADDR'       => '1.2.3.4',
+    ]);
+    // Передаём рекламодателя с ограниченным ГЕО (только UA/PL) → должен вернуть OFFGEO
+    $advertiser = ['geo' => ['UA', 'PL'], 'device' => [], 'time_from' => '', 'time_to' => ''];
+    $result = $f->check($geo, $advertiser);
+    assert_true($result !== BotFilter::PASS, "OFFGEO-запрос не должен быть PASS, получено: $result");
+});
+
+test('OFFGEO — константа OFFGEO определена', function () {
+    assert_eq('OFFGEO', BotFilter::OFFGEO);
+    assert_eq('OFFHOURS', BotFilter::OFFHOURS);
+});
+
 // ── getDeviceType ─────────────────────────────────────────────────────────────
 test('getDeviceType — mobile (Android)', function () {
     [$f, $geo] = make_filter_geo(['HTTP_USER_AGENT' => 'Mozilla/5.0 (Linux; Android 13) Mobile Safari/537.36']);

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Config.php — загрузчик конфигов с кешем в памяти
  */

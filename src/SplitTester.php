@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * SplitTester.php — A/B Split-test клоака с Байесовским тестом.
  *

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * public/index.php — точка входа PreLend
  *
@@ -64,6 +65,24 @@ switch ($filterResult) {
         }
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'cloaked');
+        renderCloak($cloakTemplate, $geo->getGeo());
+        break;
+
+    case BotFilter::OFFGEO:
+    case BotFilter::OFFHOURS:
+        // Трафик не по ГЕО или вне рабочего времени — клоачим как нецелевой
+        $ctx = ClickLogger::buildContext($geo, $filter, null);
+        $logger->log($ctx, 'cloaked');
+        $cloakTemplate = 'expert_review';
+        foreach ($advertisers as $a) {
+            if (($a['status'] ?? '') === 'active') {
+                $geos = $a['geo'] ?? [];
+                if (empty($geos) || in_array($geo->getGeo(), $geos, true)) {
+                    $cloakTemplate = $a['template'] ?? 'expert_review';
+                    break;
+                }
+            }
+        }
         renderCloak($cloakTemplate, $geo->getGeo());
         break;
 

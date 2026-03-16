@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * DB.php — singleton-обёртка над SQLite (PDO)
  * Создаёт clicks.db и таблицы при первом запуске.
