@@ -1,0 +1,32 @@
+[Unit]
+Description=PreLend Internal API
+Documentation=https://github.com/NomelLime/PreLend
+After=network.target
+
+[Service]
+# Замените 'prelend' на реального пользователя VPS
+User=prelend
+Group=prelend
+WorkingDirectory=/var/www/prelend
+
+# Укажите реальный путь к venv и реальный ключ
+ExecStart=/var/www/prelend/venv/bin/uvicorn internal_api.main:app \
+    --host 127.0.0.1 \
+    --port 9090 \
+    --no-access-log
+
+Restart=always
+RestartSec=5
+
+# Env-переменные: задайте здесь или через EnvironmentFile=
+Environment=PL_INTERNAL_API_KEY=REPLACE_WITH_REAL_KEY
+# Environment=PL_INTERNAL_HOST=127.0.0.1
+# Environment=PL_INTERNAL_PORT=9090
+# Environment=PL_GIT_AUTOCOMMIT=true
+
+# Безопасность
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

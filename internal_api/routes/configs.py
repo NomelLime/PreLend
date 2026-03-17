@@ -1,0 +1,136 @@
+"""
+internal_api/routes/configs.py
+
+Эндпоинты:
+    GET  /config/{name}  — чтение JSON-конфига
+    PUT  /config/{name}  — атомичная перезапись + git commit
+
+Доступные имена: settings | advertisers | geo_data | splits
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Union
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from .. import config as cfg
+from ..auth import require_api_key
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+_CONFIG_MAP: Dict[str, Path] = {
+    "settings":    cfg.SETTINGS_JSON,
+    "advertisers": cfg.ADVERTISERS_JSON,
+    "geo_data":    cfg.GEO_DATA_JSON,
+    "splits":      cfg.SPLITS_JSON,
+}
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _read_json(path: Path) -> Union[Dict, List]:
+    if not path.exists():
+        return {} if "settings" in path.name or "geo" in path.name else []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.error("[configs] Ошибка чтения %s: %s", path, exc)
+        raise HTTPException(500, f"Ошибка чтения конфига: {exc}")
+
+
+def _atomic_write_json(path: Path, data: Any) -> None:
+    """Атомарная запись через временный файл (write → rename)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        os.write(fd, text.encode("utf-8"))
+        os.close(fd)
+        os.replace(tmp, str(path))
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _git_commit(file_path: Path, message: str) -> None:
+    """Git commit изменённого файла на VPS (если GIT_AUTOCOMMIT включён)."""
+    if not cfg.GIT_AUTOCOMMIT:
+        return
+    try:
+        rel = str(file_path.relative_to(cfg.ROOT))
+        subprocess.run(
+            ["git", "add", rel],
+            cwd=str(cfg.ROOT), capture_output=True, timeout=10, check=False,
+        )
+        result = subprocess.run(
+            ["git", "commit", "-m", message],
+            cwd=str(cfg.ROOT), capture_output=True, timeout=10, check=False,
+        )
+        stdout = result.stdout.decode("utf-8", errors="ignore")
+        if result.returncode == 0 or "nothing to commit" in stdout:
+            logger.info("[configs] git commit: %s", message[:80])
+        else:
+            logger.warning("[configs] git commit failed: %s", result.stderr.decode()[:200])
+    except Exception as exc:
+        logger.warning("[configs] git commit exception: %s", exc)
+
+
+# ── Эндпоинты ─────────────────────────────────────────────────────────────────
+
+@router.get("/config/{name}")
+def read_config(
+    name: str,
+    _key: str = Depends(require_api_key),
+):
+    """Возвращает JSON-конфиг PreLend по имени."""
+    if name not in _CONFIG_MAP:
+        raise HTTPException(
+            404,
+            f"Конфиг '{name}' не найден. Доступные: {list(_CONFIG_MAP)}",
+        )
+    return _read_json(_CONFIG_MAP[name])
+
+
+@router.put("/config/{name}")
+def write_config(
+    name: str,
+    body: Union[Dict, List],
+    source: str = "remote",
+    _key: str = Depends(require_api_key),
+):
+    """
+    Атомарно перезаписывает JSON-конфиг PreLend и делает git commit на VPS.
+
+    source — метка источника изменений (например, 'orchestrator/plan_12' или 'contenthub:admin').
+    """
+    if name not in _CONFIG_MAP:
+        raise HTTPException(
+            404,
+            f"Конфиг '{name}' не найден. Доступные: {list(_CONFIG_MAP)}",
+        )
+
+    path = _CONFIG_MAP[name]
+    try:
+        _atomic_write_json(path, body)
+    except Exception as exc:
+        logger.error("[configs] Ошибка записи %s: %s", name, exc)
+        raise HTTPException(500, f"Ошибка записи конфига: {exc}")
+
+    _git_commit(path, f"[{source}] update config/{name}")
+    logger.info("[configs] %s обновлён (source=%s)", name, source)
+
+    return {"success": True, "config": name, "source": source}
