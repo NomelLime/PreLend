@@ -88,3 +88,9 @@ CREATE TABLE IF NOT EXISTS split_results (
 CREATE INDEX IF NOT EXISTS idx_split_results_split   ON split_results(split_id);
 CREATE INDEX IF NOT EXISTS idx_split_results_variant ON split_results(split_id, variant_id);
 CREATE INDEX IF NOT EXISTS idx_split_results_ts      ON split_results(ts);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+--  idx_conv_rate_limit (FIX#7 — rate limiting в postback.php)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_conv_rate_limit
+    ON conversions (advertiser_id, source, created_at);

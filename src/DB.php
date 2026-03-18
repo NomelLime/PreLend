@@ -10,6 +10,16 @@ class DB
 
     public static function get(): PDO
     {
+        // Проверяем живость существующего соединения (stale connection за PHP-FPM)
+        if (self::$instance !== null) {
+            try {
+                self::$instance->query('SELECT 1');
+            } catch (PDOException $e) {
+                error_log('[PreLend][DB] Stale connection, reconnecting: ' . $e->getMessage());
+                self::$instance = null;
+            }
+        }
+
         if (self::$instance === null) {
             $settings = json_decode(
                 file_get_contents(__DIR__ . '/../config/settings.json'),
