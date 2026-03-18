@@ -105,15 +105,21 @@ switch ($filterResult) {
         $isTest = isset($_GET['test']) && $_GET['test'] === '1';
 
         if ($adv !== null) {
-            $ctx      = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
-            $clickId  = $logger->log($ctx, 'sent');
-            $url      = SubIdBuilder::build($adv, $clickId);
+            $ctx     = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
+            $clickId = $logger->log($ctx, 'sent');
+            // Если INSERT упал — не передаём мёртвый click_id рекламодателю
+            if ($logger->lastInsertFailed) {
+                error_log('[PreLend] INSERT click failed — redirect без SubID');
+                $url = $adv['url'] ?? $defaultOfferUrl;
+            } else {
+                $url = SubIdBuilder::build($adv, $clickId);
+            }
             $template = $adv['template'] ?? 'expert_review';
         } else {
             // Нет подходящего рекламодателя → дефолтный оффер
-            $ctx      = ClickLogger::buildContext($geo, $filter, null, $isTest);
-            $clickId  = $logger->log($ctx, 'sent');
-            $url      = SubIdBuilder::buildDefault($defaultOfferUrl);
+            $ctx     = ClickLogger::buildContext($geo, $filter, null, $isTest);
+            $clickId = $logger->log($ctx, 'sent');
+            $url     = SubIdBuilder::buildDefault($defaultOfferUrl);
             $template = 'expert_review';
         }
 

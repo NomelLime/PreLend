@@ -10,6 +10,7 @@ declare(strict_types=1);
 class ClickLogger
 {
     private PDO $db;
+    public bool $lastInsertFailed = false;
 
     public function __construct(PDO $db)
     {
@@ -20,6 +21,8 @@ class ClickLogger
 
     /**
      * Записывает клик, возвращает click_id.
+     * Проверяй $logger->lastInsertFailed после вызова — если true,
+     * click_id не существует в БД и не должен передаваться рекламодателю.
      *
      * @param array  $context  Данные клика
      * @param string $status   sent | bot | cloaked
@@ -28,6 +31,7 @@ class ClickLogger
     public function log(array $context, string $status = 'sent'): string
     {
         $clickId = $this->generateUUID();
+        $this->lastInsertFailed = false;
 
         try {
             $stmt = $this->db->prepare("
@@ -62,6 +66,7 @@ class ClickLogger
             ]);
         } catch (Throwable $e) {
             error_log('[PreLend][ClickLogger] ' . $e->getMessage());
+            $this->lastInsertFailed = true;
             // Не прерываем выполнение — редирект важнее лога
         }
 
