@@ -15,7 +15,7 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -31,6 +31,58 @@ _CONFIG_MAP: Dict[str, Path] = {
     "geo_data":    cfg.GEO_DATA_JSON,
     "splits":      cfg.SPLITS_JSON,
 }
+
+# Допустимые top-level ключи в settings.json (whitelist — protection-in-depth)
+_SETTINGS_ALLOWED_KEYS = {
+    "default_offer_url", "cloak_url", "db_path", "log_path",
+    "alerts", "test_conversion_prefix", "cloudflare", "scoring",
+    "redirect_delay_ms", "timezone", "ollama", "postback_token",
+    "cloak_template",
+}
+
+# Максимальный размер тела запроса (байт) — защита от мусорных записей
+_MAX_BODY_BYTES = 1_000_000
+
+
+def _validate_body(name: str, body: Any) -> Optional[str]:
+    """
+    Валидирует тело PUT /config/{name}.
+    Возвращает строку с описанием ошибки или None если всё ок.
+    """
+    # Размерный лимит
+    try:
+        body_size = len(json.dumps(body).encode("utf-8"))
+    except Exception:
+        return "Тело запроса не сериализуется в JSON"
+    if body_size > _MAX_BODY_BYTES:
+        return f"Тело запроса слишком большое ({body_size} байт > {_MAX_BODY_BYTES})"
+
+    if name == "settings":
+        if not isinstance(body, dict):
+            return "settings должен быть объектом (dict)"
+        unknown = set(body.keys()) - _SETTINGS_ALLOWED_KEYS
+        if unknown:
+            return f"Недопустимые ключи в settings: {sorted(unknown)}"
+
+    elif name == "advertisers":
+        if not isinstance(body, list):
+            return "advertisers должен быть массивом (list)"
+        for i, item in enumerate(body):
+            if not isinstance(item, dict):
+                return f"advertisers[{i}] должен быть объектом"
+            missing = {"id", "name", "status"} - set(item.keys())
+            if missing:
+                return f"advertisers[{i}] отсутствуют обязательные ключи: {missing}"
+
+    elif name == "splits":
+        if not isinstance(body, list):
+            return "splits должен быть массивом (list)"
+
+    elif name == "geo_data":
+        if not isinstance(body, dict):
+            return "geo_data должен быть объектом (dict)"
+
+    return None
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -122,6 +174,11 @@ def write_config(
             404,
             f"Конфиг '{name}' не найден. Доступные: {list(_CONFIG_MAP)}",
         )
+
+    # Валидация содержимого (whitelist, типы, размер)
+    err = _validate_body(name, body)
+    if err:
+        raise HTTPException(400, f"Невалидное тело запроса для '{name}': {err}")
 
     path = _CONFIG_MAP[name]
     try:
