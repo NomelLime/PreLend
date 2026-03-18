@@ -8,10 +8,15 @@ declare(strict_types=1);
  * Два типа шаблонов:
  *   cloaked/ — статичные SEO-страницы-легенды для платформенных ботов
  *   offers/  — страницы-прокладки для живых пользователей (с CTA + авторедиректом)
+ *
+ * [FIX#17] При отсутствии шаблона (включая fallback на default) → 404, не 200.
+ *   Было: http_response_code(200) → поисковики индексировали пустые страницы,
+ *         мониторинг не замечал проблему (HTTP 200 = "всё ок").
+ *   Стало: http_response_code(404) → корректный сигнал для логов и мониторинга.
  */
 class TemplateRenderer
 {
-    private const TEMPLATE_DIR = ROOT . '/templates/';
+    private const TEMPLATE_DIR    = ROOT . '/templates/';
     private const DEFAULT_TEMPLATE = 'expert_review';
 
     /**
@@ -34,6 +39,7 @@ class TemplateRenderer
      * @param string $targetUrl  URL для редиректа
      * @param int    $delayMs    Задержка в миллисекундах
      * @param array  $vars       Дополнительные переменные
+     * @param string $geo        ISO-2 код страны для гео-адаптации
      */
     public static function renderOffer(
         string $template,
@@ -45,7 +51,6 @@ class TemplateRenderer
         $vars['target_url'] = $targetUrl;
         $vars['delay_ms']   = max(500, $delayMs);
         $vars['delay_sec']  = (int) ceil($delayMs / 1000);
-        // Инжектируем гео-контекст если передан код страны
         if ($geo !== '') {
             $geoCtx = GeoAdapter::context($geo);
             $vars   = array_merge($geoCtx, $vars);
@@ -82,9 +87,13 @@ class TemplateRenderer
         }
 
         if (!file_exists($path)) {
-            error_log('[PreLend][TemplateRenderer] Template not found: ' . $path);
-            http_response_code(200);
-            echo '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body></body></html>';
+            // [FIX#17] Шаблон не найден даже после fallback → 404, не 200.
+            // Было: http_response_code(200) — поисковики индексировали пустые страницы,
+            //       мониторинг не замечал проблему.
+            // Стало: http_response_code(404) — корректный HTTP-статус для отсутствия ресурса.
+            error_log('[PreLend][TemplateRenderer] Template not found: ' . $type . '/' . $template . '.php');
+            http_response_code(404);
+            echo '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>Not Found</body></html>';
             return;
         }
 
