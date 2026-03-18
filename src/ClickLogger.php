@@ -10,7 +10,6 @@ declare(strict_types=1);
 class ClickLogger
 {
     private PDO $db;
-    public bool $lastInsertFailed = false;
 
     public function __construct(PDO $db)
     {
@@ -20,18 +19,18 @@ class ClickLogger
     // ── Публичный API ──────────────────────────────────────────────────────
 
     /**
-     * Записывает клик, возвращает click_id.
-     * Проверяй $logger->lastInsertFailed после вызова — если true,
-     * click_id не существует в БД и не должен передаваться рекламодателю.
+     * Записывает клик. Возвращает массив {click_id, ok}.
+     *
+     * Если INSERT упал — ok=false, click_id сгенерирован но не сохранён в БД.
+     * Вызывающий код должен проверять ok перед передачей click_id рекламодателю.
      *
      * @param array  $context  Данные клика
      * @param string $status   sent | bot | cloaked
-     * @return string          click_id
+     * @return array{click_id: string, ok: bool}
      */
-    public function log(array $context, string $status = 'sent'): string
+    public function log(array $context, string $status = 'sent'): array
     {
         $clickId = $this->generateUUID();
-        $this->lastInsertFailed = false;
 
         try {
             $stmt = $this->db->prepare("
@@ -64,13 +63,11 @@ class ClickLogger
                 ':is_test'       => $context['is_test']       ?? 0,
                 ':status'        => $status,
             ]);
+            return ['click_id' => $clickId, 'ok' => true];
         } catch (Throwable $e) {
             error_log('[PreLend][ClickLogger] ' . $e->getMessage());
-            $this->lastInsertFailed = true;
-            // Не прерываем выполнение — редирект важнее лога
+            return ['click_id' => $clickId, 'ok' => false];
         }
-
-        return $clickId;
     }
 
     // ── Вспомогательные методы ────────────────────────────────────────────

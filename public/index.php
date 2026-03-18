@@ -64,7 +64,7 @@ switch ($filterResult) {
             }
         }
         $ctx = ClickLogger::buildContext($geo, $filter, null);
-        $logger->log($ctx, 'cloaked');
+        $logger->log($ctx, 'cloaked');   // ok не проверяем — cloak без SubID всегда
         renderCloak($cloakTemplate, $geo->getGeo());
         break;
 
@@ -72,7 +72,7 @@ switch ($filterResult) {
     case FilterResult::OFFHOURS:
         // Трафик не по ГЕО или вне рабочего времени — клоачим как нецелевой
         $ctx = ClickLogger::buildContext($geo, $filter, null);
-        $logger->log($ctx, 'cloaked');
+        $logger->log($ctx, 'cloaked');   // ok не проверяем — cloak без SubID всегда
         $cloakTemplate = 'expert_review';
         foreach ($advertisers as $a) {
             if (($a['status'] ?? '') === 'active') {
@@ -91,7 +91,7 @@ switch ($filterResult) {
     case FilterResult::TOR:
         // Нецелевой — тихая заглушка или редирект на дефолт без лога
         $ctx = ClickLogger::buildContext($geo, $filter, null);
-        $logger->log($ctx, 'bot');
+        $logger->log($ctx, 'bot');   // ok не проверяем — bot без SubID всегда
         redirectInstant($defaultOfferUrl);
         break;
 
@@ -105,10 +105,11 @@ switch ($filterResult) {
         $isTest = isset($_GET['test']) && $_GET['test'] === '1';
 
         if ($adv !== null) {
-            $ctx     = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
-            $clickId = $logger->log($ctx, 'sent');
-            // Если INSERT упал — не передаём мёртвый click_id рекламодателю
-            if ($logger->lastInsertFailed) {
+            $ctx    = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
+            $result = $logger->log($ctx, 'sent');
+            $clickId = $result['click_id'];
+            if (!$result['ok']) {
+                // INSERT упал — не передаём мёртвый click_id рекламодателю
                 error_log('[PreLend] INSERT click failed — redirect без SubID');
                 $url = $adv['url'] ?? $defaultOfferUrl;
             } else {
@@ -118,7 +119,8 @@ switch ($filterResult) {
         } else {
             // Нет подходящего рекламодателя → дефолтный оффер
             $ctx     = ClickLogger::buildContext($geo, $filter, null, $isTest);
-            $clickId = $logger->log($ctx, 'sent');
+            $result  = $logger->log($ctx, 'sent');
+            $clickId = $result['click_id'];
             $url     = SubIdBuilder::buildDefault($defaultOfferUrl);
             $template = 'expert_review';
         }
