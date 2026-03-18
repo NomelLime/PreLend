@@ -27,6 +27,7 @@ class BotFilter
     const TOR      = 'TOR';
 
     private string       $ua;
+    private string       $ip;
     private FilterResult $result   = FilterResult::PASS;
     private string       $platform = 'direct';
 
@@ -168,6 +169,9 @@ class BotFilter
     public function __construct()
     {
         $this->ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        // Сохраняем IP в момент создания объекта —
+        // getRealIp() может быть вызван позже когда $_SERVER уже изменён (тесты)
+        $this->ip = $this->getRealIp();
         $this->detectPlatform();
     }
 
@@ -208,8 +212,11 @@ class BotFilter
             return $this->result = FilterResult::VPN;
         }
 
-        // 6. Фильтры рекламодателя (device, time) — если передан конфиг
+        // 6. Фильтры рекламодателя (geo, device, time) — если передан конфиг
         if ($advertiser !== null) {
+            if (!$this->checkGeo($advertiser, $geo)) {
+                return $this->result = FilterResult::OFFGEO;
+            }
             if (!$this->checkDevice($advertiser)) {
                 return $this->result = FilterResult::BOT;
             }
@@ -305,7 +312,7 @@ class BotFilter
         }
 
         // Проверка IP по точным datacenter-диапазонам через ip2long()
-        $ip = $this->getRealIp();
+        $ip = $this->ip;
         if ($ip === '') {
             return false;
         }
@@ -325,6 +332,15 @@ class BotFilter
         }
 
         return false;
+    }
+
+    private function checkGeo(array $advertiser, GeoDetector $geo): bool
+    {
+        $allowed = $advertiser['geo'] ?? [];
+        if (empty($allowed)) {
+            return true;  // рекламодатель принимает любое ГЕО
+        }
+        return in_array($geo->getGeo(), $allowed, true);
     }
 
     private function checkDevice(array $advertiser): bool
