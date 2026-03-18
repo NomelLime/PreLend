@@ -187,3 +187,15 @@ PHP клоакинг, BotFilter, Router, агенты, мониторинг.
 |------|----------|-------------|
 | `src/ClickLogger.php` | INSERT fail → мёртвый click_id возвращался вызывающему коду | Добавлен `public bool $lastInsertFailed`; устанавливается в `true` в catch-блоке |
 | `public/index.php` | click_id без записи в БД уходил в SubIdBuilder → постбэк без конверсии | После `$logger->log()` проверяем `$logger->lastInsertFailed`; если true — redirect без SubID |
+
+### Code Review (18.03.2026) — исправления по результатам полного ревью
+
+| # | Severity | Файл(ы) | Исправление |
+|---|----------|---------|-------------|
+| FIX#1 | Critical | `src/BotFilter.php`, `tests/test_bot_filter.php` | `DC_SUBNETS` (prefix-matching, ложные срабатывания на /8 блоки) → `DC_CIDRS` с `ip2long()`. 90 точных диапазонов (AWS/GCP/Azure/DO/Hetzner/OVH/Linode). 4 новых теста |
+| FIX#3 | High | `public/postback.php` | IP whitelist: `HTTP_X_FORWARDED_FOR` (подделываемый) → `HTTP_CF_CONNECTING_IP` |
+| FIX#4 | High | `internal_api/auth.py`, `internal_api/config.py`, `.env.example` | Warning при dev-режиме (один раз за процесс); инструкция по генерации ключа |
+| FIX#7 | Medium | `data/init_db.sql` | `idx_conv_rate_limit ON conversions(advertiser_id, source, created_at)` — устраняет full scan при rate-limit проверке |
+| FIX#10 | Medium | `src/FilterResult.php` (NEW), `src/BotFilter.php`, `public/index.php`, тесты | PHP 8.1 `enum FilterResult: string`. `BotFilter::check()` → `FilterResult`. Строковые константы оставлены для BC |
+| FIX#13 | Low | `src/ClickLogger.php`, `public/index.php` | `log()` возвращает `array{click_id, ok}` вместо строки + side-effect флага `lastInsertFailed` |
+| FIX#14 | Low | `src/DB.php` | `SELECT 1` проверка живости PDO-соединения перед переиспользованием singleton |
