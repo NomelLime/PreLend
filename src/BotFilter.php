@@ -4,17 +4,20 @@ declare(strict_types=1);
  * BotFilter.php
  *
  * Семь фильтров клоакинга. Возвращает результат проверки:
- *   PASS      — живой пользователь, пропускаем на оффер
- *   BOT       — бот / сканер / парсер
- *   CLOAK     — платформенный сканер (IG/TT/YT) — показываем легенду
- *   VPN       — VPN/прокси/datacenter IP
- *   OFFGEO    — ГЕО не совпадает ни с одним рекламодателем
- *   OFFHOURS  — вне рабочего времени рекламодателя
- *   TOR       — Tor-трафик
+ *   FilterResult::PASS      — живой пользователь, пропускаем на оффер
+ *   FilterResult::BOT       — бот / сканер / парсер
+ *   FilterResult::CLOAK     — платформенный сканер (IG/TT/YT) — показываем легенду
+ *   FilterResult::VPN       — VPN/прокси/datacenter IP
+ *   FilterResult::OFFGEO    — ГЕО не совпадает ни с одним рекламодателем
+ *   FilterResult::OFFHOURS  — вне рабочего времени рекламодателя
+ *   FilterResult::TOR       — Tor-трафик
  */
+require_once __DIR__ . '/FilterResult.php';
+
 class BotFilter
 {
-    // Результаты фильтрации
+    // Строковые константы оставлены для обратной совместимости.
+    // Используй FilterResult enum в новом коде.
     const PASS     = 'PASS';
     const BOT      = 'BOT';
     const CLOAK    = 'CLOAK';
@@ -23,9 +26,9 @@ class BotFilter
     const OFFHOURS = 'OFFHOURS';
     const TOR      = 'TOR';
 
-    private string $ua;
-    private string $result = self::PASS;
-    private string $platform = 'direct';
+    private string       $ua;
+    private FilterResult $result   = FilterResult::PASS;
+    private string       $platform = 'direct';
 
     // ── Платформенные боты (сканеры ссылок) ───────────────────────────────
     private const PLATFORM_BOTS = [
@@ -176,49 +179,56 @@ class BotFilter
      *
      * @param GeoDetector $geo
      * @param array|null  $advertiser  Конфиг конкретного рекламодателя для проверки time/device
-     * @return string  Одна из констант: PASS, BOT, CLOAK, VPN, OFFGEO, OFFHOURS, TOR
+     * @return FilterResult  Результат проверки (PHP 8.1 backed enum)
      */
-    public function check(GeoDetector $geo, ?array $advertiser = null): string
+    public function check(GeoDetector $geo, ?array $advertiser = null): FilterResult
     {
         // 1. Tor
         if ($geo->isTor()) {
-            return $this->result = self::TOR;
+            return $this->result = FilterResult::TOR;
         }
 
         // 2. Пустой UA → точно бот
         if (trim($this->ua) === '') {
-            return $this->result = self::BOT;
+            return $this->result = FilterResult::BOT;
         }
 
         // 3. Платформенные сканеры → легенда
         if ($this->isPlatformBot()) {
-            return $this->result = self::CLOAK;
+            return $this->result = FilterResult::CLOAK;
         }
 
         // 4. Общие боты / парсеры / headless
         if ($this->isGenericBot()) {
-            return $this->result = self::BOT;
+            return $this->result = FilterResult::BOT;
         }
 
         // 5. VPN / Proxy / Datacenter
         if ($this->isVpnOrDatacenter()) {
-            return $this->result = self::VPN;
+            return $this->result = FilterResult::VPN;
         }
 
         // 6. Фильтры рекламодателя (device, time) — если передан конфиг
         if ($advertiser !== null) {
             if (!$this->checkDevice($advertiser)) {
-                return $this->result = self::BOT;
+                return $this->result = FilterResult::BOT;
             }
             if (!$this->checkTime($advertiser)) {
-                return $this->result = self::OFFHOURS;
+                return $this->result = FilterResult::OFFHOURS;
             }
         }
 
-        return $this->result = self::PASS;
+        return $this->result = FilterResult::PASS;
     }
 
+    /** Строковое значение результата (для записи в БД, обратная совместимость). */
     public function getResult(): string
+    {
+        return $this->result->value;
+    }
+
+    /** Возвращает FilterResult enum (для строгой типизации в новом коде). */
+    public function getResultEnum(): FilterResult
     {
         return $this->result;
     }

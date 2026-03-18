@@ -51,7 +51,7 @@ test('TOR — CF T1 → TOR', function () {
         'HTTP_CF_IPCOUNTRY' => 'T1',
         'HTTP_USER_AGENT'   => 'Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko Firefox/115.0',
     ]);
-    assert_eq(BotFilter::TOR, $f->check($geo));
+    assert_eq(FilterResult::TOR, $f->check($geo));
 });
 
 // ── CLOAK — платформенные боты ────────────────────────────────────────────────
@@ -60,7 +60,7 @@ test('CLOAK — facebookexternalhit', function () {
         'HTTP_CF_IPCOUNTRY' => 'US',
         'HTTP_USER_AGENT'   => 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
     ]);
-    assert_eq(BotFilter::CLOAK, $f->check($geo));
+    assert_eq(FilterResult::CLOAK, $f->check($geo));
 });
 
 test('CLOAK — Bytespider (TikTok)', function () {
@@ -68,7 +68,7 @@ test('CLOAK — Bytespider (TikTok)', function () {
         'HTTP_CF_IPCOUNTRY' => 'SG',
         'HTTP_USER_AGENT'   => 'Bytespider; spider-feedback@bytedance.com',
     ]);
-    assert_eq(BotFilter::CLOAK, $f->check($geo));
+    assert_eq(FilterResult::CLOAK, $f->check($geo));
 });
 
 test('CLOAK — Googlebot (YouTube)', function () {
@@ -76,23 +76,23 @@ test('CLOAK — Googlebot (YouTube)', function () {
         'HTTP_CF_IPCOUNTRY' => 'US',
         'HTTP_USER_AGENT'   => 'Googlebot/2.1 (+http://www.google.com/bot.html)',
     ]);
-    assert_eq(BotFilter::CLOAK, $f->check($geo));
+    assert_eq(FilterResult::CLOAK, $f->check($geo));
 });
 
 // ── BOT — общие парсеры ───────────────────────────────────────────────────────
 test('BOT — пустой UA', function () {
     [$f, $geo] = make_filter_geo(['HTTP_CF_IPCOUNTRY' => 'UA', 'HTTP_USER_AGENT' => '']);
-    assert_eq(BotFilter::BOT, $f->check($geo));
+    assert_eq(FilterResult::BOT, $f->check($geo));
 });
 
 test('BOT — curl UA', function () {
     [$f, $geo] = make_filter_geo(['HTTP_CF_IPCOUNTRY' => 'UA', 'HTTP_USER_AGENT' => 'curl/7.88.1']);
-    assert_eq(BotFilter::BOT, $f->check($geo));
+    assert_eq(FilterResult::BOT, $f->check($geo));
 });
 
 test('BOT — python-requests', function () {
     [$f, $geo] = make_filter_geo(['HTTP_CF_IPCOUNTRY' => 'UA', 'HTTP_USER_AGENT' => 'python-requests/2.28.1']);
-    assert_eq(BotFilter::BOT, $f->check($geo));
+    assert_eq(FilterResult::BOT, $f->check($geo));
 });
 
 // ── PASS — живые пользователи ─────────────────────────────────────────────────
@@ -102,7 +102,7 @@ test('PASS — Android Chrome mobile', function () {
         'HTTP_USER_AGENT'   => 'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
         'REMOTE_ADDR'       => '93.184.216.34',
     ]);
-    assert_eq(BotFilter::PASS, $f->check($geo));
+    assert_eq(FilterResult::PASS, $f->check($geo));
 });
 
 test('PASS — iPhone Safari', function () {
@@ -111,7 +111,7 @@ test('PASS — iPhone Safari', function () {
         'HTTP_USER_AGENT'   => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1',
         'REMOTE_ADDR'       => '83.25.200.1',
     ]);
-    assert_eq(BotFilter::PASS, $f->check($geo));
+    assert_eq(FilterResult::PASS, $f->check($geo));
 });
 
 test('PASS — Windows Chrome desktop', function () {
@@ -120,7 +120,7 @@ test('PASS — Windows Chrome desktop', function () {
         'HTTP_USER_AGENT'   => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
         'REMOTE_ADDR'       => '178.90.0.1',
     ]);
-    assert_eq(BotFilter::PASS, $f->check($geo));
+    assert_eq(FilterResult::PASS, $f->check($geo));
 });
 
 // ── OFFGEO / OFFHOURS ─────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ test('VPN — AWS IP в точном диапазоне детектируетс
         'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120',
         'REMOTE_ADDR'           => '52.10.20.30',
     ]);
-    assert_eq(BotFilter::VPN, $f->check($geo));
+    assert_eq(FilterResult::VPN, $f->check($geo));
 });
 
 test('PASS — обычный ISP (Comcast) не фильтруется', function () {
@@ -159,7 +159,7 @@ test('PASS — обычный ISP (Comcast) не фильтруется', functi
         'HTTP_USER_AGENT'       => 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
         'REMOTE_ADDR'           => '73.162.45.100',
     ]);
-    assert_eq(BotFilter::PASS, $f->check($geo));
+    assert_eq(FilterResult::PASS, $f->check($geo));
 });
 
 test('PASS — IP 3.100.0.1 не в DC_CIDRS (не бросает false-positive)', function () {
@@ -170,7 +170,7 @@ test('PASS — IP 3.100.0.1 не в DC_CIDRS (не бросает false-positive
         'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Linux; Android 13) Chrome/120',
         'REMOTE_ADDR'           => '3.100.0.1',
     ]);
-    assert_eq(BotFilter::PASS, $f->check($geo));
+    assert_eq(FilterResult::PASS, $f->check($geo));
 });
 
 test('VPN — Azure IP детектируется', function () {
@@ -180,7 +180,7 @@ test('VPN — Azure IP детектируется', function () {
         'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Windows NT 10.0) Chrome/120',
         'REMOTE_ADDR'           => '40.80.10.5',
     ]);
-    assert_eq(BotFilter::VPN, $f->check($geo));
+    assert_eq(FilterResult::VPN, $f->check($geo));
 });
 
 // ── getDeviceType ─────────────────────────────────────────────────────────────

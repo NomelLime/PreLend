@@ -50,7 +50,7 @@ $logger = new ClickLogger($db);
 // ── 3. Роутинг и редирект ─────────────────────────────────────────────────
 switch ($filterResult) {
 
-    case BotFilter::CLOAK:
+    case FilterResult::CLOAK:
         // Платформенный сканер — показываем легенду
         // Определяем шаблон по первому подходящему рекламодателю для этого ГЕО
         $cloakTemplate = 'expert_review';
@@ -68,8 +68,8 @@ switch ($filterResult) {
         renderCloak($cloakTemplate, $geo->getGeo());
         break;
 
-    case BotFilter::OFFGEO:
-    case BotFilter::OFFHOURS:
+    case FilterResult::OFFGEO:
+    case FilterResult::OFFHOURS:
         // Трафик не по ГЕО или вне рабочего времени — клоачим как нецелевой
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'cloaked');
@@ -86,16 +86,16 @@ switch ($filterResult) {
         renderCloak($cloakTemplate, $geo->getGeo());
         break;
 
-    case BotFilter::BOT:
-    case BotFilter::VPN:
-    case BotFilter::TOR:
+    case FilterResult::BOT:
+    case FilterResult::VPN:
+    case FilterResult::TOR:
         // Нецелевой — тихая заглушка или редирект на дефолт без лога
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'bot');
         redirectInstant($defaultOfferUrl);
         break;
 
-    case BotFilter::PASS:
+    case FilterResult::PASS:
     default:
         // Живой пользователь
         $router = new Router($advertisers, $settings, $db);
