@@ -141,6 +141,48 @@ test('OFFGEO — константа OFFGEO определена', function () {
     assert_eq('OFFHOURS', BotFilter::OFFHOURS);
 });
 
+// ── VPN / Datacenter CIDR ────────────────────────────────────────────────────
+test('VPN — AWS IP в точном диапазоне детектируется', function () {
+    [$f, $geo] = make_filter_geo([
+        'HTTP_CF_IPCOUNTRY'     => 'US',
+        'HTTP_CF_CONNECTING_IP' => '52.10.20.30',
+        'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120',
+        'REMOTE_ADDR'           => '52.10.20.30',
+    ]);
+    assert_eq(BotFilter::VPN, $f->check($geo));
+});
+
+test('PASS — обычный ISP (Comcast) не фильтруется', function () {
+    [$f, $geo] = make_filter_geo([
+        'HTTP_CF_IPCOUNTRY'     => 'US',
+        'HTTP_CF_CONNECTING_IP' => '73.162.45.100',
+        'HTTP_USER_AGENT'       => 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
+        'REMOTE_ADDR'           => '73.162.45.100',
+    ]);
+    assert_eq(BotFilter::PASS, $f->check($geo));
+});
+
+test('PASS — IP 3.100.0.1 не в DC_CIDRS (не бросает false-positive)', function () {
+    // Старый DC_SUBNETS '3.' фильтровал весь /8. Новый CIDR — только точные диапазоны.
+    [$f, $geo] = make_filter_geo([
+        'HTTP_CF_IPCOUNTRY'     => 'AU',
+        'HTTP_CF_CONNECTING_IP' => '3.100.0.1',
+        'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Linux; Android 13) Chrome/120',
+        'REMOTE_ADDR'           => '3.100.0.1',
+    ]);
+    assert_eq(BotFilter::PASS, $f->check($geo));
+});
+
+test('VPN — Azure IP детектируется', function () {
+    [$f, $geo] = make_filter_geo([
+        'HTTP_CF_IPCOUNTRY'     => 'US',
+        'HTTP_CF_CONNECTING_IP' => '40.80.10.5',
+        'HTTP_USER_AGENT'       => 'Mozilla/5.0 (Windows NT 10.0) Chrome/120',
+        'REMOTE_ADDR'           => '40.80.10.5',
+    ]);
+    assert_eq(BotFilter::VPN, $f->check($geo));
+});
+
 // ── getDeviceType ─────────────────────────────────────────────────────────────
 test('getDeviceType — mobile (Android)', function () {
     [$f, $geo] = make_filter_geo(['HTTP_USER_AGENT' => 'Mozilla/5.0 (Linux; Android 13) Mobile Safari/537.36']);
