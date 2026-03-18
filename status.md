@@ -199,3 +199,18 @@ PHP клоакинг, BotFilter, Router, агенты, мониторинг.
 | FIX#10 | Medium | `src/FilterResult.php` (NEW), `src/BotFilter.php`, `public/index.php`, тесты | PHP 8.1 `enum FilterResult: string`. `BotFilter::check()` → `FilterResult`. Строковые константы оставлены для BC |
 | FIX#13 | Low | `src/ClickLogger.php`, `public/index.php` | `log()` возвращает `array{click_id, ok}` вместо строки + side-effect флага `lastInsertFailed` |
 | FIX#14 | Low | `src/DB.php` | `SELECT 1` проверка живости PDO-соединения перед переиспользованием singleton |
+
+### Code Review v2 (18.03.2026) — дополнительные исправления после верификации
+
+| # | Severity | Файл(ы) | Исправление |
+|---|----------|---------|-------------|
+| FIX#17 | Medium | `src/TemplateRenderer.php` | `http_response_code(200)` → `http_response_code(404)` в fallback-ветке отсутствующего шаблона. Поисковики индексировали пустые страницы; мониторинг не замечал проблему |
+| BUG-A | Critical | `src/BotFilter.php` | `isVpnOrDatacenter()` читал `$_SERVER['HTTP_CF_CONNECTING_IP']` в runtime → IP терялся при тестировании (после восстановления `$_SERVER`). Исправлено: `$this->ip` кэшируется в `__construct()` |
+| BUG-B | High | `src/BotFilter.php` | `checkGeo()` метод отсутствовал → OFFGEO **никогда не возвращался** в продакшне, все пользователи с нецелевым ГЕО получали PASS и попадали на оффер. Добавлен `checkGeo()` + вызов в `check()` перед `checkDevice()` |
+| FIX#13b | Medium | `tests/test_bot_filter.php` | `BotFilter::PASS` в assert message → `FilterResult::PASS`. `BotFilter::OFFGEO/OFFHOURS` → `FilterResult::OFFGEO->value / OFFHOURS->value` |
+
+**Статус тестов после всех исправлений:**
+- `php tests/test_bot_filter.php` → **27/27** ✅
+- `php tests/test_router.php` → **11/11** ✅
+- `php tests/test_conversion_logger.php` → **8/8** ✅
+- `grep -rn 'BotFilter::PASS|BOT|CLOAK...' src/ public/ tests/` → 0 реальных вхождений ✅
