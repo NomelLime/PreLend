@@ -173,3 +173,17 @@ PHP клоакинг, BotFilter, Router, агенты, мониторинг.
 - `main.py`, `config.py`, `auth.py`, `routes/metrics.py`, `routes/configs.py`, `routes/agents.py`
 - `deploy/prelend-internal-api.service` — systemd unit
 - Атомарная запись конфигов (write → rename), git commit на стороне VPS
+
+### Сессия 9 (18.03.2026) — Дельта-ревью + фиксы безопасности Internal API
+
+| Файл | Изменение |
+|------|-----------|
+| `internal_api/routes/configs.py` | Whitelist 13 ключей для settings; валидация типов advertisers (обязательные поля id/name/status); размерный лимит 1 МБ |
+| `internal_api/main.py` | `/health` расширен: `db_size_mb`, `last_click_ago_sec`, `traffic_alive`, `pending_clicks_24h` |
+
+### Сессия 10 (18.03.2026) — BUG-5: ClickLogger lastInsertFailed
+
+| Файл | Проблема | Исправление |
+|------|----------|-------------|
+| `src/ClickLogger.php` | INSERT fail → мёртвый click_id возвращался вызывающему коду | Добавлен `public bool $lastInsertFailed`; устанавливается в `true` в catch-блоке |
+| `public/index.php` | click_id без записи в БД уходил в SubIdBuilder → постбэк без конверсии | После `$logger->log()` проверяем `$logger->lastInsertFailed`; если true — redirect без SubID |
