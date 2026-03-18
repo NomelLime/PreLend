@@ -94,11 +94,10 @@ if ($advConfig === null) {
 // ── IP-whitelist ───────────────────────────────────────────────────────────────
 $allowedIps = $advConfig['allowed_ips'] ?? [];
 if (!empty($allowedIps)) {
-    $remoteIp = $_SERVER['REMOTE_ADDR'] ?? '';
-    // Поддержка X-Forwarded-For если за прокси (только от trusted source)
-    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $remoteIp = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
-    }
+    // Используем CF-Connecting-IP (Cloudflare подставляет реальный IP клиента).
+    // REMOTE_ADDR за CF = IP узла Cloudflare. HTTP_X_FORWARDED_FOR подделывается
+    // клиентом — не использовать для whitelist. Аналогично ClickLogger::getRealIp().
+    $remoteIp = trim($_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '');
     if (!in_array($remoteIp, $allowedIps, true)) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'ip not whitelisted']);
