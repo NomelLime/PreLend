@@ -121,6 +121,21 @@ server {
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
 
+    # Bio-ссылки с UTM (Сессия 12C)
+    # /t/acc → TikTok bio, /i/acc → Instagram bio, /y/acc → YouTube About
+    location ~ ^/t/(?<acc>[a-zA-Z0-9_-]+)\$ {
+        rewrite ^ /index.php?utm_source=tiktok&utm_medium=bio&utm_campaign=\$acc&\$args last;
+    }
+    location ~ ^/i/(?<acc>[a-zA-Z0-9_-]+)\$ {
+        rewrite ^ /index.php?utm_source=instagram&utm_medium=bio&utm_campaign=\$acc&\$args last;
+    }
+    location ~ ^/y/(?<acc>[a-zA-Z0-9_-]+)\$ {
+        rewrite ^ /index.php?utm_source=youtube&utm_medium=bio&utm_campaign=\$acc&\$args last;
+    }
+    location ~ ^/go/(?<tag>[a-zA-Z0-9_-]+)\$ {
+        rewrite ^ /index.php?utm_source=bio&utm_campaign=\$tag&\$args last;
+    }
+
     # Всё остальное → index.php
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
