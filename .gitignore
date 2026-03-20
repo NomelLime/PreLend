@@ -22,3 +22,111 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PreLend — .gitignore
+# PHP 8.3-FPM + Nginx + SQLite | Internal API: Python FastAPI (port 9090)
+# Prod: VPS pulsority.com | Dev: Windows
+# ═══════════════════════════════════════════════════════════════════════════════
+ 
+ 
+# ── СЕКРЕТЫ И ОКРУЖЕНИЕ ────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+ 
+ 
+# ── БАЗА ДАННЫХ (SQLite + WAL-файлы) ─────────────────────────────────────────
+# WAL и SHM — runtime-файлы SQLite, могут содержать незакоммиченные транзакции
+data/clicks.db
+data/clicks.db-wal
+data/clicks.db-shm
+data/clicks.db-journal
+# Разрешаем только SQL-схему и init-скрипт
+!data/init_db.sql
+!data/schema.sql
+!data/.gitkeep
+ 
+# agent_memory.json — runtime-данные агентов
+data/agent_memory.json
+data/shave_report.json
+ 
+ 
+# ── ЛОГИ ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+errors.log
+ 
+ 
+# ── PHP ЗАВИСИМОСТИ ───────────────────────────────────────────────────────────
+vendor/
+composer.lock        # если не используешь Composer — убери эту строку
+                     # если используешь — ОСТАВЬ composer.lock (это важно для воспроизводимости)
+ 
+ 
+# ── PYTHON (Internal API: FastAPI на порту 9090) ──────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+ 
+ 
+# ── NGINX / PHP-FPM ВРЕМЕННЫЕ ФАЙЛЫ ──────────────────────────────────────────
+*.sock
+/tmp/
+ 
+ 
+# ── CERTBOT / SSL (хранятся в /etc/letsencrypt, не в репо) ───────────────────
+*.crt
+*.csr
+*.pem
+ssl/
+ 
+ 
+# ── RUNTIME-АРТЕФАКТЫ ─────────────────────────────────────────────────────────
+data/.cycle.lock
+.cycle.lock
+*.pid
+*.lock
+ 
+ 
+# ── СЛУЖЕБНЫЕ ФАЙЛЫ ПРОЕКТА ───────────────────────────────────────────────────
+status.md
+session*.md
+*_dev_plan.md
+ 
+ 
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+._*
+ 
+ 
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.orig
+*.bak
+ 
+ 
+# ── ДЕПЛОЙ-АРТЕФАКТЫ ──────────────────────────────────────────────────────────
+# Git-токен иногда сохраняют в скриптах — никогда в репо
+deploy/secrets/
+deploy/*.token
+deploy/*.key
