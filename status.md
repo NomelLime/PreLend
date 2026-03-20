@@ -214,3 +214,42 @@ PHP клоакинг, BotFilter, Router, агенты, мониторинг.
 - `php tests/test_router.php` → **11/11** ✅
 - `php tests/test_conversion_logger.php` → **8/8** ✅
 - `grep -rn 'BotFilter::PASS|BOT|CLOAK...' src/ public/ tests/` → 0 реальных вхождений ✅
+
+
+## ЧТО СДЕЛАНО / ЧЕКЛИСТ ДЕПЛОЯ
+---
+
+## ЧТО СДЕЛАНО / ЧЕКЛИСТ ДЕПЛОЯ
+
+```
+[x] PHP клоакинг (public/index.php, src/*.php)
+[x] BotFilter: 7 статусов + FilterResult enum (PHP 8.1 backed enum)
+[x] checkGeo() — OFFGEO детекция (фикс: метод отсутствовал, все OFF-GEO пользователи получали PASS)
+[x] BotFilter: кеш IP в конструкторе ($this->ip)
+[x] OFFHOURS обрабатывается корректно
+[x] declare(strict_types=1) во всех PHP файлах
+[x] Python-агенты (COMMANDER, ANALYST, MONITOR, OFFER_ROTATOR)
+[x] Мониторинг (health_check, shave_detector, daily_digest)
+[x] Internal API (FastAPI, порт 9090) — полная реализация
+[x] systemd unit для Internal API (deploy/prelend-internal-api.service)
+[x] Деплой на pulsority.com (PHP + Nginx + SSL via Certbot)
+[x] UTM Nginx rewrites: /t/, /i/, /y/, /go/ (Сессия 12C)
+[x] /internal_api заблокирован в nginx (deny all; return 404)
+[ ] Запуск Internal API на VPS: systemctl enable --now prelend-internal-api
+[ ] Настройка SSH tunnel / WireGuard для Orchestrator↔PreLend
+[ ] Verify: curl https://pulsority.com/internal_api/health → 404
+[ ] Verify: curl https://pulsority.com/t/test_acc → 200 (UTM rewrites работают)
+```
+
+### После деплоя nginx.conf — обязательно
+
+```bash
+nginx -t && systemctl reload nginx
+# Проверка блокировки Internal API (снаружи):
+curl -s -o /dev/null -w "%{http_code}" https://pulsority.com/internal_api/health
+# Ожидается: 404  (НЕ 200 или 403 с JSON)
+
+# Проверка UTM bio-ссылок:
+curl -s -o /dev/null -w "%{http_code}" https://pulsority.com/t/test_acc
+# Ожидается: 200
+```
