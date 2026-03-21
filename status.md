@@ -253,3 +253,37 @@ curl -s -o /dev/null -w "%{http_code}" https://pulsority.com/internal_api/health
 curl -s -o /dev/null -w "%{http_code}" https://pulsority.com/t/test_acc
 # Ожидается: 200
 ```
+
+---
+
+### Сессия 13 (21.03.2026) — Стабилизация авторизации Internal API для ContentHub
+
+**Инцидент:**
+- ContentHub стабильно стартовал, но при интеграции с PreLend получал `HTTP 403` на `/agents` и `/metrics`.
+- Прямой вызов `curl http://localhost:9090/agents` возвращал `{"detail":"Invalid or missing API key"}`.
+
+**Причина:**
+- Несовпадение фактического ключа `PL_INTERNAL_API_KEY` в запущенном systemd-процессе `prelend-internal-api` и ключа, который отправлял ContentHub в `X-API-Key`.
+
+**Что сделано на VPS (Ubuntu):**
+```bash
+sudo nano /etc/systemd/system/prelend-internal-api.service
+# Обновлён Environment=PL_INTERNAL_API_KEY=<REAL_KEY>
+
+sudo systemctl daemon-reload
+sudo systemctl restart prelend-internal-api
+sudo systemctl status prelend-internal-api --no-pager
+```
+
+**Проверка:**
+```bash
+# Без ключа: ожидаемо 403
+curl -i http://127.0.0.1:9090/agents
+
+# С ключом: должен быть 200
+curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
+```
+
+**Важно для эксплуатации:**
+- После любого изменения `PL_INTERNAL_API_KEY` обязателен перезапуск `prelend-internal-api` (systemd).
+- На стороне ContentHub тот же ключ должен быть в `backend/.env` (`PL_INTERNAL_API_KEY=...`) и после изменения нужен перезапуск `uvicorn`.
