@@ -1,14 +1,12 @@
 <?php
 declare(strict_types=1);
 /**
- * stub_advertiser.php — тестовая «лендинг»-заглушка рекламодателя adv_stub.
+ * stub_advertiser.php — плейсхолдер лендинга для adv_stub.
  *
- * Ожидает в URL параметр click_id (как в advertisers.json → subid_param).
- * Показывает полный конфиг (секрет HMAC в интерфейсе замаскирован), строку для подписи
- * и готовую ссылку GET либо форму POST на эту страницу → редирект на postback.php с верным HMAC.
+ * Обычные посетители: лаконичная страница на английском.
+ * Техника (HMAC, JSON, тест постбэка): добавьте ?debug=1
  *
- * Перед продакшеном: смените hmac_secret у adv_stub, при необходимости url в advertisers.json
- * (должен указывать на реальный хост, где открыта эта страница).
+ * Ожидает SubID в параметре из advertisers.json → subid_param (по умолчанию click_id).
  */
 
 define('ROOT', dirname(__DIR__));
@@ -65,11 +63,13 @@ function buildSigPayload(string $advId, string $clickId, string $date): string
 if ($adv === null) {
     header('Content-Type: text/html; charset=utf-8');
     http_response_code(500);
-    echo '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>adv_stub</title></head><body>';
-    echo '<p>В config/advertisers.json нет рекламодателя с id <code>' . htmlspecialchars(STUB_ADV_ID, ENT_QUOTES, 'UTF-8') . '</code>.</p>';
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Unavailable</title></head><body>';
+    echo '<p>Configuration error: advertiser <code>' . htmlspecialchars(STUB_ADV_ID, ENT_QUOTES, 'UTF-8') . '</code> is missing.</p>';
     echo '</body></html>';
     exit;
 }
+
+$debugMode = isset($_GET['debug']) && (string)$_GET['debug'] === '1';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'fire_postback') {
     $postbackBase = postbackEndpoint();
@@ -86,7 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'fire_
     if ($pClickId === '') {
         header('Content-Type: text/html; charset=utf-8');
         http_response_code(400);
-        echo '<p>Нужен <code>click_id</code>.</p><p><a href="stub_advertiser.php">Назад</a></p>';
+        $back = 'stub_advertiser.php';
+        if (isset($_POST['debug_return'])) {
+            $back .= '?debug=1';
+        }
+        echo '<p>Нужен <code>click_id</code>.</p><p><a href="' . htmlspecialchars($back, ENT_QUOTES, 'UTF-8') . '">Назад</a></p>';
         exit;
     }
 
@@ -138,17 +142,55 @@ $getUrl = $postbackBase . '?' . http_build_query($query);
 $advForJson = $adv;
 $advForJson['hmac_secret'] = maskSecret($hmacSecret);
 
+$formAction = 'stub_advertiser.php';
+if ($debugMode) {
+    $formAction .= '?debug=1';
+}
+
 ?>
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="<?= $debugMode ? 'ru' : 'en' ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Заглушка рекламодателя — <?= htmlspecialchars($adv['name'] ?? $advId, ENT_QUOTES, 'UTF-8') ?></title>
+    <meta name="robots" content="noindex, nofollow">
+    <title><?= $debugMode ? 'Debug — ' . htmlspecialchars($adv['name'] ?? $advId, ENT_QUOTES, 'UTF-8') : 'Welcome' ?></title>
     <style>
-        :root { font-family: system-ui, sans-serif; line-height: 1.5; color: #1a1a1a; }
-        body { max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
-        h1 { font-size: 1.35rem; }
+        :root {
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            color: #1c1917;
+        }
+        * { box-sizing: border-box; }
+        /* —— Публичная заглушка —— */
+        .placeholder {
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.25rem;
+            background: linear-gradient(165deg, #f8fafc 0%, #eef2ff 45%, #faf5ff 100%);
+        }
+        .placeholder-card {
+            max-width: 28rem;
+            text-align: center;
+        }
+        .placeholder h1 {
+            margin: 0 0 0.75rem;
+            font-size: clamp(1.5rem, 4vw, 1.85rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+        }
+        .placeholder p {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #64748b;
+        }
+        /* —— Режим отладки —— */
+        .debug-wrap { max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
+        .debug-wrap h1 { font-size: 1.35rem; }
         .warn { background: #fff8e6; border: 1px solid #e6c200; padding: 0.75rem 1rem; border-radius: 6px; margin: 1rem 0; }
         code, pre { font-size: 0.85rem; background: #f4f4f5; padding: 0.15rem 0.35rem; border-radius: 4px; }
         pre { padding: 1rem; overflow-x: auto; }
@@ -156,7 +198,10 @@ $advForJson['hmac_secret'] = maskSecret($hmacSecret);
         th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
         th { background: #f0f0f1; width: 11rem; }
         .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
-        a.btn, button { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 6px; text-decoration: none; font-size: 0.9rem; cursor: pointer; border: 1px solid #ccc; background: #fff; color: inherit; }
+        a.btn, button {
+            display: inline-block; padding: 0.45rem 0.9rem; border-radius: 6px; text-decoration: none;
+            font-size: 0.9rem; cursor: pointer; border: 1px solid #ccc; background: #fff; color: inherit;
+        }
         a.btn-primary, button.primary { background: #2563eb; color: #fff; border-color: #1d4ed8; }
         label { display: block; margin: 0.35rem 0 0.15rem; font-size: 0.85rem; }
         input { width: 100%; max-width: 22rem; padding: 0.35rem 0.5rem; font-size: 0.9rem; }
@@ -165,59 +210,70 @@ $advForJson['hmac_secret'] = maskSecret($hmacSecret);
     </style>
 </head>
 <body>
-    <h1><?= htmlspecialchars($adv['name'] ?? 'Заглушка', ENT_QUOTES, 'UTF-8') ?></h1>
-    <p>ID: <code><?= htmlspecialchars($advId, ENT_QUOTES, 'UTF-8') ?></code>. Эмуляция лендинга партнёра: пришёл клик с вашим SubID в параметре <code><?= htmlspecialchars($subParam, ENT_QUOTES, 'UTF-8') ?></code>.</p>
+<?php if (!$debugMode) : ?>
+    <main class="placeholder">
+        <div class="placeholder-card">
+            <h1>Your ad could be here.</h1>
+            <p>Thank you for visiting.</p>
+        </div>
+    </main>
+<?php else : ?>
+    <div class="debug-wrap">
+        <h1><?= htmlspecialchars($adv['name'] ?? 'Заглушка', ENT_QUOTES, 'UTF-8') ?></h1>
+        <p>ID: <code><?= htmlspecialchars($advId, ENT_QUOTES, 'UTF-8') ?></code>. SubID в параметре <code><?= htmlspecialchars($subParam, ENT_QUOTES, 'UTF-8') ?></code>.</p>
 
-    <div class="warn">
-        Низкая ставка (<code>rate: <?= htmlspecialchars((string)($adv['rate'] ?? ''), ENT_QUOTES, 'UTF-8') ?></code>), чтобы не перехватывать живой трафик.
-        Для проверки удобнее открыть преленд с <code>?test=1</code> или временно отключить других рекламодателей.
-        URL в конфиге сейчас <code><?= htmlspecialchars((string)($adv['url'] ?? ''), ENT_QUOTES, 'UTF-8') ?></code> — при другом хосте замените его в <code>config/advertisers.json</code>.
+        <div class="warn">
+            Низкая ставка (<code>rate: <?= htmlspecialchars((string)($adv['rate'] ?? ''), ENT_QUOTES, 'UTF-8') ?></code>).
+            Без <code>?debug=1</code> посетителям показывается только плейсхолдер на английском.
+        </div>
+
+        <h2>Текущий клик</h2>
+        <table>
+            <tr><th>click_id</th><td><?= $clickId !== '' ? '<code>' . htmlspecialchars($clickId, ENT_QUOTES, 'UTF-8') . '</code>' : '<em>не передан — укажите в URL или форме ниже</em>' ?></td></tr>
+            <tr><th>date (конверсии)</th><td><code><?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?></code></td></tr>
+            <tr><th>Строка для HMAC</th><td><code><?= htmlspecialchars($sigPayload, ENT_QUOTES, 'UTF-8') ?></code></td></tr>
+            <tr><th>sig (SHA-256)</th><td><?= $sig !== '' ? '<code>' . htmlspecialchars($sig, ENT_QUOTES, 'UTF-8') . '</code>' : '<em>секрет пуст — подпись не нужна</em>' ?></td></tr>
+            <tr><th>postback.php</th><td><code><?= htmlspecialchars($postbackBase, ENT_QUOTES, 'UTF-8') ?></code></td></tr>
+        </table>
+
+        <div class="actions">
+            <?php if ($clickId !== '' && $sig !== '') : ?>
+                <a class="btn btn-primary" href="<?= htmlspecialchars($getUrl, ENT_QUOTES, 'UTF-8') ?>">GET постбэк (с подписью)</a>
+            <?php elseif ($clickId !== '' && $sig === '') : ?>
+                <a class="btn btn-primary" href="<?= htmlspecialchars($getUrl, ENT_QUOTES, 'UTF-8') ?>">GET постбэк (без подписи)</a>
+            <?php else : ?>
+                <span class="btn" style="opacity:0.6;cursor:not-allowed">Сначала укажите click_id</span>
+            <?php endif; ?>
+        </div>
+
+        <h2>JSON рекламодателя (секрет замаскирован)</h2>
+        <pre><?= htmlspecialchars(json_encode($advForJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?></pre>
+
+        <h2>Ручная отправка постбэка</h2>
+        <p>POST сюда → редирект на <code>postback.php</code> (ответ — JSON).</p>
+        <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="fire_postback">
+            <input type="hidden" name="debug_return" value="1">
+            <fieldset>
+                <legend>Параметры</legend>
+                <label for="f_click">click_id</label>
+                <input id="f_click" name="click_id" value="<?= htmlspecialchars($clickId, ENT_QUOTES, 'UTF-8') ?>" required>
+
+                <label for="f_date">date</label>
+                <input id="f_date" name="date" value="<?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?>">
+
+                <label for="f_count">count</label>
+                <input id="f_count" name="count" type="number" min="1" value="<?= (int)$countDefault ?>">
+
+                <label for="f_payout">payout</label>
+                <input id="f_payout" name="payout" value="<?= htmlspecialchars($payoutDefault, ENT_QUOTES, 'UTF-8') ?>">
+            </fieldset>
+            <?php if ($hmacSecret !== '') : ?>
+                <p><label><input type="checkbox" name="with_sig" value="1" checked> HMAC <code>sig</code></label></p>
+            <?php endif; ?>
+            <button type="submit" class="primary">Отправить постбэк</button>
+        </form>
     </div>
-
-    <h2>Текущий клик</h2>
-    <table>
-        <tr><th>click_id</th><td><?= $clickId !== '' ? '<code>' . htmlspecialchars($clickId, ENT_QUOTES, 'UTF-8') . '</code>' : '<em>не передан — укажите в URL или форме ниже</em>' ?></td></tr>
-        <tr><th>date (конверсии)</th><td><code><?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?></code></td></tr>
-        <tr><th>Строка для HMAC</th><td><code><?= htmlspecialchars($sigPayload, ENT_QUOTES, 'UTF-8') ?></code></td></tr>
-        <tr><th>sig (SHA-256)</th><td><?= $sig !== '' ? '<code>' . htmlspecialchars($sig, ENT_QUOTES, 'UTF-8') . '</code>' : '<em>секрет пуст — подпись не нужна</em>' ?></td></tr>
-        <tr><th>postback.php</th><td><code><?= htmlspecialchars($postbackBase, ENT_QUOTES, 'UTF-8') ?></code></td></tr>
-    </table>
-
-    <div class="actions">
-        <?php if ($clickId !== '' && $sig !== '') : ?>
-            <a class="btn btn-primary" href="<?= htmlspecialchars($getUrl, ENT_QUOTES, 'UTF-8') ?>">GET постбэк (с подписью)</a>
-        <?php elseif ($clickId !== '' && $sig === '') : ?>
-            <a class="btn btn-primary" href="<?= htmlspecialchars($getUrl, ENT_QUOTES, 'UTF-8') ?>">GET постбэк (без подписи)</a>
-        <?php else : ?>
-            <span class="btn" style="opacity:0.6;cursor:not-allowed">Сначала укажите click_id</span>
-        <?php endif; ?>
-    </div>
-
-    <h2>Полный JSON рекламодателя (секрет замаскирован)</h2>
-    <pre><?= htmlspecialchars(json_encode($advForJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?></pre>
-
-    <h2>Ручная отправка</h2>
-    <p>Форма шлёт POST сюда; сервер считает <code>sig</code> и перенаправляет на <code>postback.php</code> (ответ вы увидите как JSON в браузере).</p>
-    <form method="post" action="stub_advertiser.php">
-        <input type="hidden" name="action" value="fire_postback">
-        <fieldset>
-            <legend>Параметры постбэка</legend>
-            <label for="f_click">click_id</label>
-            <input id="f_click" name="click_id" value="<?= htmlspecialchars($clickId, ENT_QUOTES, 'UTF-8') ?>" required>
-
-            <label for="f_date">date</label>
-            <input id="f_date" name="date" value="<?= htmlspecialchars($date, ENT_QUOTES, 'UTF-8') ?>">
-
-            <label for="f_count">count</label>
-            <input id="f_count" name="count" type="number" min="1" value="<?= (int)$countDefault ?>">
-
-            <label for="f_payout">payout</label>
-            <input id="f_payout" name="payout" value="<?= htmlspecialchars($payoutDefault, ENT_QUOTES, 'UTF-8') ?>">
-        </fieldset>
-        <?php if ($hmacSecret !== '') : ?>
-            <p><label><input type="checkbox" name="with_sig" value="1" checked> Добавить HMAC <code>sig</code> (обязательно, пока у adv_stub задан <code>hmac_secret</code>)</label></p>
-        <?php endif; ?>
-        <button type="submit" class="primary">Отправить постбэк</button>
-    </form>
+<?php endif; ?>
 </body>
 </html>
