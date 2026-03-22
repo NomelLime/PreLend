@@ -57,7 +57,7 @@ def get_metrics(
     Агрегированные метрики PreLend за period_hours.
 
     Возвращает:
-        total_clicks, conversions, cr, bot_pct, top_geo,
+        total_clicks, conversions, cr, bot_pct, top_geo, geo_breakdown,
         shave_suspects, analyst_verdicts, agent_statuses
     """
     result: Dict[str, Any] = {
@@ -67,6 +67,7 @@ def get_metrics(
         "cr":               None,
         "bot_pct":          None,
         "top_geo":          None,
+        "geo_breakdown":    [],
         "shave_suspects":   [],
         "analyst_verdicts": {},
         "agent_statuses":   {},
@@ -109,6 +110,35 @@ def get_metrics(
 
             if geo_row:
                 result["top_geo"] = geo_row["geo"]
+
+            # Разбивка по ГЕО: клики (без bot/cloaked) и конверсии по статусу клика
+            geo_rows = conn.execute(
+                """
+                SELECT
+                    COALESCE(NULLIF(TRIM(geo), ''), '—') AS geo,
+                    COUNT(*) AS clicks,
+                    SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) AS conversions
+                FROM clicks
+                WHERE ts >= ? AND is_test = 0 AND status NOT IN ('bot', 'cloaked')
+                GROUP BY 1
+                ORDER BY clicks DESC
+                """,
+                (since_ts,),
+            ).fetchall()
+
+            breakdown = []
+            for gr in geo_rows:
+                c = int(gr["clicks"] or 0)
+                conv = int(gr["conversions"] or 0)
+                breakdown.append(
+                    {
+                        "geo": gr["geo"],
+                        "clicks": c,
+                        "conversions": conv,
+                        "cr": round(conv / c, 6) if c > 0 else 0.0,
+                    }
+                )
+            result["geo_breakdown"] = breakdown
 
         except Exception as exc:
             logger.error("[metrics] Ошибка чтения clicks.db: %s", exc)
