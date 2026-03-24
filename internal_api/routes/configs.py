@@ -44,6 +44,18 @@ _SETTINGS_ALLOWED_KEYS = {
 _MAX_BODY_BYTES = 1_000_000
 
 
+def _list_templates() -> Dict[str, List[str]]:
+    """Возвращает доступные шаблоны из templates/offers и templates/cloaked."""
+    base = cfg.ROOT / "templates"
+    result: Dict[str, List[str]] = {"offers": [], "cloaked": []}
+    for key in ("offers", "cloaked"):
+        folder = base / key
+        if not folder.exists():
+            continue
+        result[key] = sorted([p.stem for p in folder.glob("*.php") if p.is_file()])
+    return result
+
+
 def _validate_body(name: str, body: Any) -> Optional[str]:
     """
     Валидирует тело PUT /config/{name}.
@@ -155,6 +167,14 @@ def read_config(
             f"Конфиг '{name}' не найден. Доступные: {list(_CONFIG_MAP)}",
         )
     return _read_json(_CONFIG_MAP[name])
+
+
+@router.get("/templates")
+def list_templates(
+    _key: str = Depends(require_api_key),
+):
+    """Список доступных шаблонов PreLend для UI."""
+    return _list_templates()
 
 
 @router.put("/config/{name}")
