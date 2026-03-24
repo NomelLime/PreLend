@@ -10,12 +10,12 @@
     "device": [],
     "time_from": "",
     "time_to": "",
-    "template": "sports_news",
+    "template": "betting_live_odds",
     "backup_offer_id": null,
     "cr_threshold_pct": 3.0,
     "cr_rotation_days": 3,
     "cr_rotation_enabled": false,
-    "hmac_secret": "***",
+    "hmac_secret": "prelend_stub_hmac_dev_only_change_in_prod",
     "allowed_ips": [],
     "max_postbacks_per_min": 120
   }
