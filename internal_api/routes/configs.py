@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from .. import config as cfg
 from ..auth import require_api_key
@@ -153,6 +153,52 @@ def _git_commit(file_path: Path, message: str) -> None:
         logger.warning("[configs] git commit exception: %s", exc)
 
 
+async def _extract_request_body(request: Request) -> Any:
+    """
+    Унифицированный парсер тела PUT /config/{name}.
+
+    Поддерживаем:
+      - application/json: тело = JSON (dict/list)
+      - form/multipart: поле body (JSON-строка или уже dict/list)
+    Это нужно для совместимости с legacy-клиентами.
+    """
+    ctype = (request.headers.get("content-type") or "").lower()
+
+    # Предпочтительный формат — чистый JSON.
+    if "application/json" in ctype or ctype == "":
+        try:
+            return await request.json()
+        except Exception as exc:
+            raise HTTPException(400, f"Невалидный JSON в теле запроса: {exc}")
+
+    # Legacy-формат: body в form-data/urlencoded.
+    if "multipart/form-data" in ctype or "application/x-www-form-urlencoded" in ctype:
+        try:
+            form = await request.form()
+        except Exception as exc:
+            raise HTTPException(400, f"Не удалось прочитать form-data: {exc}")
+        if "body" not in form:
+            raise HTTPException(422, "Поле 'body' обязательно для form-data запроса")
+        raw = form.get("body")
+        if isinstance(raw, (dict, list)):
+            return raw
+        if hasattr(raw, "read"):
+            # UploadFile: читаем содержимое как текст JSON
+            try:
+                raw_bytes = await raw.read()
+                raw = raw_bytes.decode("utf-8")
+            except Exception as exc:
+                raise HTTPException(400, f"Не удалось прочитать upload body: {exc}")
+        if not isinstance(raw, str):
+            raise HTTPException(400, "Поле 'body' должно быть JSON-строкой")
+        try:
+            return json.loads(raw)
+        except Exception as exc:
+            raise HTTPException(400, f"Поле 'body' не содержит валидный JSON: {exc}")
+
+    raise HTTPException(415, f"Неподдерживаемый Content-Type: {ctype}")
+
+
 # ── Эндпоинты ─────────────────────────────────────────────────────────────────
 
 @router.get("/config/{name}")
@@ -178,9 +224,9 @@ def list_templates(
 
 
 @router.put("/config/{name}")
-def write_config(
+async def write_config(
     name: str,
-    body: Union[Dict, List],
+    request: Request,
     source: str = "remote",
     _key: str = Depends(require_api_key),
 ):
@@ -194,6 +240,8 @@ def write_config(
             404,
             f"Конфиг '{name}' не найден. Доступные: {list(_CONFIG_MAP)}",
         )
+
+    body = await _extract_request_body(request)
 
     # Валидация содержимого (whitelist, типы, размер)
     err = _validate_body(name, body)
