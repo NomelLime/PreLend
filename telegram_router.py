@@ -19,10 +19,10 @@ telegram_router.py — Единый Telegram polling для ShortsProject + PreL
   │    ├─ /prelend → PreLend.command()  │
   │    └─ /shorts  → Shorts.command()   │
   │                                     │
-  │  PreLendCrew    ShortsProjectCrew   │
-  │  (COMMANDER     (уже существует     │
-  │   ANALYST        в ShortsProject)   │
-  │   MONITOR)                          │
+│  PreLendCrew    ShortsProjectCrew   │
+│  (COMMANDER     (уже существует     │
+│   ANALYST        в ShortsProject)   │
+│   MONITOR, OFFER_ROTATOR)           │
   └─────────────────────────────────────┘
 
 .env (общий файл):
@@ -87,7 +87,7 @@ _DISABLE_POLLING: bool = os.getenv("PL_DISABLE_TELEGRAM_POLLING", "false").lower
 class PreLendCrew:
     """
     Инициализирует и управляет агентами PreLend:
-      COMMANDER, ANALYST, MONITOR
+      COMMANDER, ANALYST, MONITOR, OFFER_ROTATOR
     """
 
     def __init__(self, notify: Optional[Callable[[str], None]] = None) -> None:
@@ -95,6 +95,7 @@ class PreLendCrew:
         from agents.commander    import Commander
         from agents.analyst      import Analyst
         from agents.monitor_agent import Monitor
+        from agents.offer_rotator import OfferRotator
 
         self.memory    = get_memory()
         self._notify   = notify
@@ -102,6 +103,7 @@ class PreLendCrew:
         self.analyst   = Analyst(memory=self.memory,   notify=notify)
         self.monitor   = Monitor(memory=self.memory,   notify=notify,
                                  analyst=self.analyst)
+        self.offer_rotator = OfferRotator(memory=self.memory, notify=notify)
         self.commander = Commander(memory=self.memory, notify=notify)
 
         logger.info("[PreLend] Агенты инициализированы")
@@ -109,11 +111,13 @@ class PreLendCrew:
     def start(self) -> None:
         self.analyst.start()
         self.monitor.start()
+        self.offer_rotator.start()
         self.commander.start()
         logger.info("[PreLend] Все агенты запущены")
 
     def stop(self) -> None:
         self.commander.stop()
+        self.offer_rotator.stop()
         self.monitor.stop()
         self.analyst.stop()
         logger.info("[PreLend] Все агенты остановлены")

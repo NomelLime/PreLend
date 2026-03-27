@@ -132,6 +132,7 @@ class OfferRotator(BaseAgent):
         self.logger.info("[OFFER_ROTATOR] Запущен")
         while not self.should_stop:
             self._set_status(AgentStatus.RUNNING, "проверка CR")
+            self.set_human_detail("Сверяю CR рекламодателей и при необходимости меняю офферы")
             try:
                 self.check_all()
             except Exception as exc:

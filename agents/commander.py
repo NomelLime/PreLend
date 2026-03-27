@@ -172,11 +172,15 @@ class Commander(BaseAgent):
             with self._queue_lock:
                 cmd = self._queue.popleft() if self._queue else None
             if cmd:
+                self.set_human_detail(f"Выполняю команду PreLend: {cmd[:80]}{'…' if len(cmd) > 80 else ''}")
                 try:
                     result = self.handle_command(cmd)
                     self._send(result)
                 except Exception as exc:
                     self.logger.error("[COMMANDER] Ошибка обработки '%s': %s", cmd, exc)
+                self.set_human_detail("Жду команды /prelend в Telegram")
+            else:
+                self.set_human_detail("Жду команды оператора (PreLend)")
             self.sleep(1.0)
 
     # ── Быстрые команды (без Ollama) ──────────────────────────────────────────

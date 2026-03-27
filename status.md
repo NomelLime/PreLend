@@ -335,3 +335,22 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 | `tests/test_bot_filter.php` | `curl` UA ожидает **`PROBE`**, не `BOT`. |
 
 **Деплой на VPS:** `git pull` → `chown` на `config/`, `data/` для пользователя сервиса (часто `www-data`) → `systemctl restart prelend-internal-api` → `systemctl reload php*-fpm` → `systemctl reload nginx`. Проверка: `PUT /config/advertisers` с `Content-Type: application/json` → `{"success":true,...}`.
+
+### Сессия 17 (27.03.2026) — Локализация всех offer-шаблонов + проверка деплоя
+
+| Область | Изменение |
+|---------|-----------|
+| `src/TemplateI18n.php` | В `pickBundle()` добавлен fallback на `en`: сначала база `en`, затем `array_merge($en, $bundles[$locale])`. Неполные локали автоматически дополняются английскими строками. |
+| `templates/i18n/*.json` | Добавлены/обновлены i18n-бандлы для offer-шаблонов: `sports_news`, `tech_deals`, `wellness_quiz`, `finance_briefing`, `betting_parlay_boost`, `betting_live_odds`, `betting_match_center`, `gambling_slot_rush`, `gambling_vip_bonus`, `gambling_lucky_spin` (+ `expert_review` уже был). |
+| `templates/offers/*.php` | Все оффер-шаблоны переведены на единый паттерн `$i18n` + `$t()` + `html_lang`; видимые строки берутся из i18n ключей. |
+| `templates/cloaked/*` | Не изменялись по требованию; клоака остаётся на английском и отдельной веткой рендера. |
+| `public/index.php` + `src/TemplateRenderer.php` | Поток передачи `i18n` в offer-рендер сохранён; локаль продолжает приходить из `ContentLocaleResolver/GeoDetector` контекста. |
+
+**Проверка на боевом сервере (27.03):**
+- `curl -sI https://pulsority.com | head -5` → `HTTP/2 200`.
+- `php /var/www/prelend/tests/test_content_locale.php` → `5/5 passed`.
+- `php /var/www/prelend/tests/test_router.php` → тесты зелёные.
+
+**Эксплуатация после `git pull` для этой сессии:**
+- Менялись PHP-шаблоны и i18n JSON → достаточно `systemctl reload php8.3-fpm` (или `restart`, если есть следы кеша).
+- `nginx` и `prelend-internal-api` перезапускать не требуется, если их код/конфиги не менялись.

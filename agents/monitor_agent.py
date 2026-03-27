@@ -75,6 +75,7 @@ class Monitor(BaseAgent):
         self.logger.info("[MONITOR] Запущен (интервал %ds)", _CHECK_INTERVAL)
         while not self.should_stop:
             self._set_status(AgentStatus.RUNNING, "проверка")
+            self.set_human_detail("Проверяю доступность лендингов и качество трафика")
             try:
                 self._monitor_cycle()
             except Exception as exc:

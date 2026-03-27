@@ -87,6 +87,7 @@ class Analyst(BaseAgent):
         self.logger.info("[ANALYST] Запущен")
         while not self.should_stop:
             self._set_status(AgentStatus.RUNNING, "анализ")
+            self.set_human_detail("Проверяю данные шейва и готовлю выводы (Ollama)")
             try:
                 self.analyze()
             except Exception as exc:
@@ -105,6 +106,7 @@ class Analyst(BaseAgent):
         force_report=True — отправить в Telegram даже если нет подозрений.
         """
         self.logger.info("[ANALYST] Начало анализа")
+        self.set_human_detail("Сопоставляю клики, конверсии и паттерны шейва")
 
         shave_data = self._load_shave_report()
         if not shave_data:

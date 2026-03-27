@@ -128,6 +128,10 @@ class BaseAgent(ABC):
     def report(self, data: Dict[str, Any]) -> None:
         self.memory.set_agent_report(self.name, data)
 
+    def set_human_detail(self, text: str) -> None:
+        """Краткое описание текущего действия для панели (ContentHub)."""
+        self.memory.set_human_detail(self.name, text)
+
     def _send(self, message: str) -> None:
         try:
             if callable(self._notify):

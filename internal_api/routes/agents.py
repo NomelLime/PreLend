@@ -64,18 +64,39 @@ def _write_memory(data: Dict) -> None:
 def list_agents(_key: str = Depends(require_api_key)) -> List[Dict]:
     """Возвращает статусы всех известных агентов PreLend."""
     memory   = _read_memory()
-    statuses = memory.get("agent_statuses", {})
+    statuses = memory.get("agent_statuses") or {}
+    kv       = memory.get("kv") or {}
+    if not isinstance(kv, dict):
+        kv = {}
+    human_map = kv.get("agent_human_detail") or {}
+    if not isinstance(human_map, dict):
+        human_map = {}
+    agents_flat = memory.get("agents") or {}
 
-    return [
-        {
-            "name":       agent,
-            "project":    "PreLend",
-            "status":     statuses.get(agent, {}).get("status", "UNKNOWN"),
-            "updated_at": statuses.get(agent, {}).get("updated_at"),
-            "error":      statuses.get(agent, {}).get("last_error"),
-        }
-        for agent in PL_AGENTS
-    ]
+    out = []
+    for agent in PL_AGENTS:
+        info = statuses.get(agent, {}) if isinstance(statuses, dict) else {}
+        if isinstance(info, dict) and info.get("status"):
+            row = {
+                "name":       agent,
+                "project":    "PreLend",
+                "status":     info.get("status", "UNKNOWN"),
+                "updated_at": info.get("updated_at"),
+                "error":      info.get("last_error"),
+            }
+        else:
+            raw = agents_flat.get(agent) if isinstance(agents_flat, dict) else None
+            row = {
+                "name":       agent,
+                "project":    "PreLend",
+                "status":     raw if isinstance(raw, str) else "UNKNOWN",
+                "updated_at": memory.get("saved_at"),
+                "error":      None,
+            }
+        d = human_map.get(agent) or human_map.get(agent.upper())
+        row["detail"] = d if d else None
+        out.append(row)
+    return out
 
 
 @router.post("/agents/{name}/{action}")
