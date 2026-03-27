@@ -3,6 +3,8 @@
 #
 # Использование:
 #   bash deploy/deploy.sh
+# После обновления кода из git (без полного deploy):
+#   sudo bash deploy/reload_services.sh
 #
 # Предварительно:
 #   1. Скопируй .env в корень проекта на VPS
@@ -251,6 +253,14 @@ else
     warn "БД не найдена: ${DB_PATH}"
 fi
 
+# ── 13. Перезагрузка Nginx, PHP-FPM, Internal API ──────────────────────────────
+if [[ -f "${WEBROOT}/deploy/reload_services.sh" ]]; then
+    log "Перезапуск веб-стека и Internal API (reload_services.sh)..."
+    bash "${WEBROOT}/deploy/reload_services.sh" || warn "reload_services.sh завершился с ошибкой"
+else
+    warn "Нет ${WEBROOT}/deploy/reload_services.sh — перезапусти сервисы вручную"
+fi
+
 # ── Итог ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -263,4 +273,5 @@ echo "  2. Заполни конфиги:        nano ${WEBROOT}/config/advertis
 echo "  3. Запусти telegram_router на ПК разработчика"
 echo "  4. Проверь постбэк-URL:    https://${DOMAIN}/postback.php?click_id=test"
 echo "  5. Проверь логи:           tail -f ${WEBROOT}/logs/*.log"
+echo "  6. После git pull:         sudo bash ${WEBROOT}/deploy/reload_services.sh"
 echo ""
