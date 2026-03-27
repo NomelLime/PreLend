@@ -47,5 +47,28 @@ else
   warn "Юнит ${UNIT_API}.service не найден — скопируй deploy/prelend-internal-api.service в /etc/systemd/system/ и systemctl daemon-reload"
 fi
 
+_have_unit=0
+if systemctl cat "${UNIT_API}.service" &>/dev/null || [[ -f "/etc/systemd/system/${UNIT_API}.service" ]]; then
+  _have_unit=1
+fi
+
+# После restart uvicorn поднимается не мгновенно — несколько попыток (иначе ложный warn «/health недоступен»).
+_health_ok=0
+if [[ "${PRELEND_SKIP_INTERNAL_API:-0}" != "1" ]] && [[ "${_have_unit}" -eq 1 ]]; then
+  for _attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -sf --connect-timeout 2 "http://127.0.0.1:9090/health" -o /dev/null; then
+      _health_ok=1
+      break
+    fi
+    sleep 0.5
+  done
+fi
+
 log "Готово."
-curl -sf "http://127.0.0.1:9090/health" -o /dev/null && log "Internal API /health OK" || warn "/health недоступен (проверь туннель/юнит)"
+if [[ "${PRELEND_SKIP_INTERNAL_API:-0}" != "1" ]] && [[ "${_have_unit}" -eq 1 ]]; then
+  if [[ "${_health_ok}" -eq 1 ]]; then
+    log "Internal API /health OK"
+  else
+    warn "/health не ответил за ~5 с после restart (см. systemctl status ${UNIT_API} и journalctl -u ${UNIT_API} -n 30)"
+  fi
+fi
