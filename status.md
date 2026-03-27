@@ -321,3 +321,17 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Эксплуатация после `git pull` на VPS:**
 - Изменения только в `public/*.php` и `config/*.json` → перезапуск не обязателен (PHP-FPM подхватывает файлы).
 - Изменения в **`internal_api/`** → **`systemctl restart prelend-internal-api`**, иначе ContentHub/оркестратор не увидят новое поле `geo_breakdown`.
+
+### Сессия 16 (27.03.2026) — Шаблоны в UI, запись конфигов, отсечение техтрафика
+
+| Область | Изменение |
+|---------|-----------|
+| `internal_api/routes/configs.py` | `GET /templates` — списки имён из `templates/offers/*.php` и `templates/cloaked/*.php`. `PUT /config/{name}` — **универсальный парсер тела**: `application/json` и legacy **multipart/form-data** с полем `body` (совместимость со старым OpenAPI на VPS). |
+| `templates/offers/` | Новые шаблоны (в т.ч. `gambling_*`, `betting_*`, `finance_briefing`, `wellness_quiz`, `tech_deals` и др.). |
+| `templates/cloaked/` | Новые легенды (`finance_digest`, `health_magazine`, `tech_journal` и др.). |
+| `src/FilterResult.php` | Добавлен кейс **`PROBE`** — технический клиент без записи в `clicks`. |
+| `src/BotFilter.php` | Список **`TECHNICAL_PROBES`** (curl, wget, kube-probe, типичные uptime-мониторинги и т.д.); проверка после платформенных ботов, до generic-ботов. |
+| `public/index.php` | Ветка **`PROBE`**: ответ `200` + `ok`, без `ClickLogger`. |
+| `tests/test_bot_filter.php` | `curl` UA ожидает **`PROBE`**, не `BOT`. |
+
+**Деплой на VPS:** `git pull` → `chown` на `config/`, `data/` для пользователя сервиса (часто `www-data`) → `systemctl restart prelend-internal-api` → `systemctl reload php*-fpm` → `systemctl reload nginx`. Проверка: `PUT /config/advertisers` с `Content-Type: application/json` → `{"success":true,...}`.
