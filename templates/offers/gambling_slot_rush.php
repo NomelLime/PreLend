@@ -1,18 +1,27 @@
 <?php
 /** @var string $target_url */
 /** @var int    $delay_ms */
+/** @var array<string, string> $i18n */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 $safeUrl = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl   = addslashes($target_url ?? '');
 $delay   = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Slot Rush Event</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,sans-serif;background:#1a0b06;color:#fff6f1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -27,15 +36,15 @@ p{color:#f4c8b4;line-height:1.55;margin-bottom:16px}
 </head>
 <body>
   <div class="card">
-    <h1>Slot Rush is live now</h1>
-    <p>Limited-run event with boosted rounds and special reward pools. Join before the cycle resets.</p>
+    <h1><?= $t('h1') ?></h1>
+    <p><?= $t('p') ?></p>
     <div class="features">
-      <div class="f">Fast rounds</div>
-      <div class="f">Boost mode</div>
-      <div class="f">Night pool</div>
+      <div class="f"><?= $t('f1') ?></div>
+      <div class="f"><?= $t('f2') ?></div>
+      <div class="f"><?= $t('f3') ?></div>
     </div>
-    <a href="<?= $safeUrl ?>" class="btn" id="open">Join Event</a>
-    <div class="timer">Redirect in <span id="n"><?= $delaySec ?></span>s</div>
+    <a href="<?= $safeUrl ?>" class="btn" id="open"><?= $t('cta') ?></a>
+    <div class="timer"><?= $t('timer_redirect') ?> <span id="n"><?= $delaySec ?></span>s</div>
   </div>
 <script>
 (function(){

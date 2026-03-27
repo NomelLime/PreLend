@@ -140,7 +140,11 @@ switch ($filterResult) {
             $template = $splitVariant['template'] ?? $template;
         }
 
-        TemplateRenderer::renderOffer($template, $url, $delayMs, [], $geo->getGeo());
+        $localeCtx = ContentLocaleResolver::resolve($geo);
+        $i18n      = TemplateI18n::forTemplate($template, $localeCtx);
+        $offerVars = array_merge($localeCtx, ['i18n' => $i18n]);
+
+        TemplateRenderer::renderOffer($template, $url, $delayMs, $offerVars, $geo->getGeo());
         break;
 }
 

@@ -2,18 +2,27 @@
 /** @var string $target_url  URL для редиректа */
 /** @var int    $delay_ms    Задержка перед редиректом */
 /** @var int    $delay_sec   Задержка в секундах */
+/** @var array<string, string> $i18n  Строки локали (TemplateI18n) */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
 $safeUrl = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl   = addslashes($target_url ?? '');
 $delay   = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Exclusive Offer for You — Casino Expert</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d0d1a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
@@ -40,26 +49,26 @@ h1 span{color:#e94560}
 
 <div class="card">
   <div class="icon">🎰</div>
-  <div class="badge">✓ Exclusive Offer</div>
+  <div class="badge"><?= $t('badge') ?></div>
 
-  <h1>Claim Your <span>Welcome Bonus</span><br>Right Now</h1>
-  <p class="subtitle">Our experts selected the best current offer based on your region. Limited spots available today.</p>
+  <h1><?= $t('h1_line1') ?> <span><?= $t('h1_span') ?></span><br><?= $t('h1_line2') ?></h1>
+  <p class="subtitle"><?= $t('subtitle') ?></p>
 
   <div class="perks">
-    <div class="perk"><span class="check">✓</span> Up to $500 first deposit bonus</div>
-    <div class="perk"><span class="check">✓</span> 200 free spins — no wagering on winnings</div>
-    <div class="perk"><span class="check">✓</span> Withdrawals processed within 2 hours</div>
-    <div class="perk"><span class="check">✓</span> Licensed & certified platform</div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk1') ?></div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk2') ?></div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk3') ?></div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk4') ?></div>
   </div>
 
   <a href="<?= $safeUrl ?>" class="cta-btn" id="ctaBtn">
-    Claim Bonus Now →
+    <?= $t('cta') ?>
   </a>
 
-  <div class="timer">Redirecting automatically in <span id="countdown"><?= $delaySec ?></span>s</div>
+  <div class="timer"><?= $t('redirecting') ?> <span id="countdown"><?= $delaySec ?></span>s</div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 
-  <p class="disclaimer">18+ only. Terms & conditions apply. Please gamble responsibly.</p>
+  <p class="disclaimer"><?= $t('disclaimer') ?></p>
 </div>
 
 <script>

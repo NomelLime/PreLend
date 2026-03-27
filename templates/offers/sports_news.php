@@ -2,18 +2,27 @@
 /** @var string $target_url */
 /** @var int    $delay_ms   */
 /** @var int    $delay_sec  */
+/** @var array<string, string> $i18n */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 $safeUrl  = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl    = addslashes($target_url ?? '');
 $delay    = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Today's Best Odds — SportsPulse</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1b2a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
@@ -48,39 +57,39 @@ h1 span{color:#00b4d8}
 
 <div class="card">
   <div class="icon">⚽</div>
-  <div class="live-dot">Live Odds Available</div>
+  <div class="live-dot"><?= $t('badge_live') ?></div>
 
-  <h1>Get the <span>Best Odds</span><br>on Today's Matches</h1>
-  <p class="subtitle">Our analysts identified the highest-value bet of the day. Join thousands of winners — offer expires at midnight.</p>
+  <h1><?= $t('h1_line1') ?> <span><?= $t('h1_span') ?></span><br><?= $t('h1_line2') ?></h1>
+  <p class="subtitle"><?= $t('subtitle') ?></p>
 
   <div class="match-preview">
     <div class="match-teams">
-      <span>Man City</span>
-      <span class="vs">vs</span>
-      <span>Arsenal</span>
+      <span><?= $t('team_home') ?></span>
+      <span class="vs"><?= $t('vs') ?></span>
+      <span><?= $t('team_away') ?></span>
     </div>
     <div class="odds-row">
-      <div class="odd-chip"><div class="label">1</div><div class="val">1.65</div></div>
-      <div class="odd-chip"><div class="label">X</div><div class="val">3.90</div></div>
-      <div class="odd-chip"><div class="label">2</div><div class="val">4.50</div></div>
+      <div class="odd-chip"><div class="label"><?= $t('odd_l1') ?></div><div class="val">1.65</div></div>
+      <div class="odd-chip"><div class="label"><?= $t('odd_lx') ?></div><div class="val">3.90</div></div>
+      <div class="odd-chip"><div class="label"><?= $t('odd_l2') ?></div><div class="val">4.50</div></div>
     </div>
   </div>
 
   <div class="perks">
-    <div class="perk"><span class="check">✓</span> Up to $100 free bet for new users</div>
-    <div class="perk"><span class="check">✓</span> Live in-play betting on 1000+ events</div>
-    <div class="perk"><span class="check">✓</span> Cash out available on all pre-match bets</div>
-    <div class="perk"><span class="check">✓</span> Instant withdrawals via bank & crypto</div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk1') ?></div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk2') ?></div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk3') ?></div>
+    <div class="perk"><span class="check">✓</span> <?= $t('perk4') ?></div>
   </div>
 
   <a href="<?= $safeUrl ?>" class="cta-btn" id="ctaBtn">
-    Bet Now — Best Odds →
+    <?= $t('cta') ?>
   </a>
 
-  <div class="timer">Redirecting in <span id="countdown"><?= $delaySec ?></span>s</div>
+  <div class="timer"><?= $t('redirecting') ?> <span id="countdown"><?= $delaySec ?></span>s</div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 
-  <p class="disclaimer">18+ only. Gambling can be addictive. Please bet responsibly. T&Cs apply.</p>
+  <p class="disclaimer"><?= $t('disclaimer') ?></p>
 </div>
 
 <script>

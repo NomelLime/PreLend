@@ -28,6 +28,14 @@ class TemplateRenderer
      */
     public static function renderCloaked(string $template, array $vars = []): void
     {
+        // Клоака: язык контента всегда English (политика продукта).
+        $vars['content_locale'] = 'en-US';
+        $vars['locale_lang']    = 'en';
+        $vars['resolve_source'] = 'cloak';
+        $vars['i18n'] = TemplateI18n::forTemplate($template, [
+            'content_locale' => 'en-US',
+            'locale_lang'    => 'en',
+        ]);
         self::render('cloaked', $template, $vars);
     }
 
@@ -55,6 +63,12 @@ class TemplateRenderer
             $geoCtx = GeoAdapter::context($geo);
             $vars   = array_merge($geoCtx, $vars);
         }
+        if (!isset($vars['i18n']) || !is_array($vars['i18n'])) {
+            $vars['i18n'] = TemplateI18n::forTemplate($template, [
+                'content_locale' => $vars['content_locale'] ?? 'en-US',
+                'locale_lang'    => $vars['locale_lang'] ?? 'en',
+            ]);
+        }
         self::render('offers', $template, $vars);
     }
 
@@ -67,6 +81,14 @@ class TemplateRenderer
             $geoCtx = GeoAdapter::context($geo);
             $vars   = array_merge($geoCtx, $vars);
         }
+        // Клоака: текст всегда на английском; GEO остаётся для валюты/города в данных.
+        $vars['content_locale'] = 'en-US';
+        $vars['locale_lang']    = 'en';
+        $vars['resolve_source'] = 'cloak';
+        $vars['i18n'] = TemplateI18n::forTemplate($template, [
+            'content_locale' => 'en-US',
+            'locale_lang'    => 'en',
+        ]);
         self::render('cloaked', $template, $vars);
     }
 

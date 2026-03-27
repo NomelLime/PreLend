@@ -2,18 +2,27 @@
 /** @var string $target_url */
 /** @var int    $delay_ms */
 /** @var int    $delay_sec */
+/** @var array<string, string> $i18n */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 $safeUrl = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl   = addslashes($target_url ?? '');
 $delay   = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Top Tech Deals — Today Only</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b0c11;color:#f3f5ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -32,17 +41,17 @@ p{color:#b5bdd7;line-height:1.55;font-size:.95rem;margin-bottom:14px}
 </head>
 <body>
   <div class="card">
-    <div class="label">Smart picks</div>
-    <h1>Daily tech bundle selected for your location</h1>
-    <p>Curated deals are refreshed every few minutes. Open now to lock current prices before stock and coupons rotate.</p>
+    <div class="label"><?= $t('label') ?></div>
+    <h1><?= $t('h1') ?></h1>
+    <p><?= $t('p') ?></p>
     <div class="grid">
-      <div class="item"><b>Noise-Cancel Headset</b><span>up to 48% off</span></div>
-      <div class="item"><b>UltraBook 14"</b><span>limited warehouse stock</span></div>
-      <div class="item"><b>Smart Home Starter</b><span>bundle discount active</span></div>
-      <div class="item"><b>Action Camera 4K</b><span>today flash offer</span></div>
+      <div class="item"><b><?= $t('item1_title') ?></b><span><?= $t('item1_sub') ?></span></div>
+      <div class="item"><b><?= $t('item2_title') ?></b><span><?= $t('item2_sub') ?></span></div>
+      <div class="item"><b><?= $t('item3_title') ?></b><span><?= $t('item3_sub') ?></span></div>
+      <div class="item"><b><?= $t('item4_title') ?></b><span><?= $t('item4_sub') ?></span></div>
     </div>
-    <a href="<?= $safeUrl ?>" id="open" class="btn">Open Deals</a>
-    <div class="meta">Redirect in <span id="clock"><?= $delaySec ?></span>s</div>
+    <a href="<?= $safeUrl ?>" id="open" class="btn"><?= $t('cta') ?></a>
+    <div class="meta"><?= $t('meta_redirect') ?> <span id="clock"><?= $delaySec ?></span>s</div>
   </div>
 <script>
 (function(){

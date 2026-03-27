@@ -1,18 +1,27 @@
 <?php
 /** @var string $target_url */
 /** @var int    $delay_ms */
+/** @var array<string, string> $i18n */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 $safeUrl = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl   = addslashes($target_url ?? '');
 $delay   = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Parlay Boost</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,sans-serif;background:#121018;color:#f3f0ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -28,17 +37,17 @@ p{color:#c6bbeb;line-height:1.55;margin-bottom:14px}
 </head>
 <body>
   <div class="wrap">
-    <div class="pill">Boost active</div>
-    <h1>Parlay multiplier available now</h1>
-    <p>Combine picks with enhanced return settings. Offer window may close after market update.</p>
+    <div class="pill"><?= $t('pill') ?></div>
+    <h1><?= $t('h1') ?></h1>
+    <p><?= $t('p') ?></p>
     <div class="grid">
-      <div class="g">Combo builder</div>
-      <div class="g">Cashout option</div>
-      <div class="g">Risk control</div>
-      <div class="g">Fast settlement</div>
+      <div class="g"><?= $t('g1') ?></div>
+      <div class="g"><?= $t('g2') ?></div>
+      <div class="g"><?= $t('g3') ?></div>
+      <div class="g"><?= $t('g4') ?></div>
     </div>
-    <a href="<?= $safeUrl ?>" id="go" class="btn">Open Parlay Boost</a>
-    <div class="t">Redirect in <span id="timer"><?= $delaySec ?></span>s</div>
+    <a href="<?= $safeUrl ?>" id="go" class="btn"><?= $t('cta') ?></a>
+    <div class="t"><?= $t('redirect') ?> <span id="timer"><?= $delaySec ?></span>s</div>
   </div>
 <script>
 (function(){

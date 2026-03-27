@@ -1,0 +1,82 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Top Tech Deals — Today Only",
+    "label": "Smart picks",
+    "h1": "Daily tech bundle selected for your location",
+    "p": "Curated deals are refreshed every few minutes. Open now to lock current prices before stock and coupons rotate.",
+    "item1_title": "Noise-Cancel Headset",
+    "item1_sub": "up to 48% off",
+    "item2_title": "UltraBook 14\"",
+    "item2_sub": "limited warehouse stock",
+    "item3_title": "Smart Home Starter",
+    "item3_sub": "bundle discount active",
+    "item4_title": "Action Camera 4K",
+    "item4_sub": "today flash offer",
+    "cta": "Open Deals",
+    "meta_redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Top Tech-Deals — nur heute",
+    "label": "Smarte Auswahl",
+    "h1": "Tägliches Tech-Bundle für Ihren Standort",
+    "p": "Angebote werden minütlich aktualisiert. Jetzt öffnen und Preise sichern.",
+    "cta": "Deals öffnen",
+    "meta_redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Топ сделок на технику — только сегодня",
+    "label": "Умный выбор",
+    "h1": "Подборка техники под ваш регион",
+    "p": "Предложения обновляются каждые минуты. Откройте сейчас, чтобы зафиксировать цены.",
+    "cta": "Открыть сделки",
+    "meta_redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "page_title": "Mejores ofertas tech — solo hoy",
+    "label": "Selección smart",
+    "h1": "Pack tech diario para tu ubicación",
+    "p": "Las ofertas se renuevan cada pocos minutos. Abre ahora para fijar precios.",
+    "cta": "Abrir ofertas",
+    "meta_redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "page_title": "Топ угод на техніку — лише сьогодні",
+    "label": "Розумний вибір",
+    "h1": "Денний набір техніки для вашого регіону",
+    "cta": "Відкрити угоди",
+    "meta_redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "page_title": "Top oferty tech — tylko dziś",
+    "h1": "Dzienny zestaw tech pod Twoją lokalizację",
+    "cta": "Otwórz oferty",
+    "meta_redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "page_title": "Melhores ofertas tech — só hoje",
+    "h1": "Pacote tech diário para sua região",
+    "cta": "Abrir ofertas",
+    "meta_redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "page_title": "Meilleures offres tech — aujourd'hui seulement",
+    "h1": "Sélection tech quotidienne pour votre région",
+    "cta": "Voir les offres",
+    "meta_redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "page_title": "Migliori offerte tech — solo oggi",
+    "h1": "Bundle tech giornaliero per la tua zona",
+    "cta": "Apri offerte",
+    "meta_redirect": "Reindirizzamento tra"
+  }
+}

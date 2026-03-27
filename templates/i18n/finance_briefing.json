@@ -1,0 +1,70 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Market Briefing — Limited Window",
+    "kicker": "Analyst Signal",
+    "h1": "A fresh opportunity was flagged for your region",
+    "p": "Our model just updated score and confidence metrics. Open the partner page now to lock current conditions before the next refresh cycle.",
+    "stat1_b": "+12.4%",
+    "stat1_s": "signal momentum",
+    "stat2_b": "86/100",
+    "stat2_s": "confidence index",
+    "stat3_b": "03:00",
+    "stat3_s": "window left",
+    "cta": "Open Briefing",
+    "timer_redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Markt-Briefing — begrenztes Fenster",
+    "kicker": "Analysten-Signal",
+    "h1": "Neue Chance für Ihre Region markiert",
+    "p": "Unser Modell hat Kennzahlen aktualisiert. Partnerseite jetzt öffnen.",
+    "stat1_s": "Signal-Momentum",
+    "stat2_s": "Konfidenzindex",
+    "stat3_s": "Fenster verbleibend",
+    "cta": "Briefing öffnen",
+    "timer_redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Рыночный брифинг — ограниченное окно",
+    "kicker": "Сигнал аналитиков",
+    "h1": "Для вашего региона отмечена новая возможность",
+    "cta": "Открыть брифинг",
+    "timer_redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "kicker": "Señal del analista",
+    "h1": "Nueva oportunidad marcada para tu región",
+    "cta": "Abrir briefing",
+    "timer_redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "h1": "Для вашого регіону позначено нову можливість",
+    "cta": "Відкрити брифінг",
+    "timer_redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Otwórz briefing",
+    "timer_redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Abrir briefing",
+    "timer_redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Ouvrir le briefing",
+    "timer_redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Apri briefing",
+    "timer_redirect": "Reindirizzamento tra"
+  }
+}

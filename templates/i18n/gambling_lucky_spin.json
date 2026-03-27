@@ -1,0 +1,58 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Lucky Spin Access",
+    "tag": "Lucky Window",
+    "h1": "Your spin bonus is ready",
+    "p": "The offer is available for a short time. Open now to keep the current bonus conditions.",
+    "cta": "Open Bonus",
+    "timer_redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Lucky Spin",
+    "tag": "Glücksfenster",
+    "h1": "Ihr Spin-Bonus ist bereit",
+    "p": "Das Angebot ist nur kurz verfügbar.",
+    "cta": "Bonus öffnen",
+    "timer_redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Lucky Spin",
+    "h1": "Ваш бонус на спин готов",
+    "cta": "Открыть бонус",
+    "timer_redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "h1": "Tu bono de giros está listo",
+    "cta": "Abrir bono",
+    "timer_redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "cta": "Відкрити бонус",
+    "timer_redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Otwórz bonus",
+    "timer_redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Abrir bônus",
+    "timer_redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Ouvrir le bonus",
+    "timer_redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Apri bonus",
+    "timer_redirect": "Reindirizzamento tra"
+  }
+}

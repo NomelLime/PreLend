@@ -1,0 +1,68 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Live Odds Stream",
+    "h1": "Real-time odds feed unlocked",
+    "p": "Prices can move quickly. Open now to keep current values and market depth.",
+    "odd_home": "Home",
+    "odd_draw": "Draw",
+    "odd_away": "Away",
+    "cta": "Open Live Odds",
+    "timer_redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Live-Quoten",
+    "h1": "Echtzeit-Quoten freigeschaltet",
+    "p": "Kurse ändern sich schnell. Jetzt öffnen.",
+    "odd_home": "Heim",
+    "odd_draw": "Unentschieden",
+    "odd_away": "Auswärts",
+    "cta": "Live-Quoten öffnen",
+    "timer_redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Live-коэффициенты",
+    "h1": "Поток коэффициентов в реальном времени",
+    "odd_home": "Хозяева",
+    "odd_draw": "Ничья",
+    "odd_away": "Гости",
+    "cta": "Открыть live",
+    "timer_redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "h1": "Cuotas en tiempo real desbloqueadas",
+    "odd_home": "Local",
+    "odd_draw": "Empate",
+    "odd_away": "Visitante",
+    "cta": "Abrir cuotas live",
+    "timer_redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "cta": "Відкрити live-коефіцієнти",
+    "timer_redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Otwórz kursy live",
+    "timer_redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Abrir odds ao vivo",
+    "timer_redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Ouvrir cotes en direct",
+    "timer_redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Apri quote live",
+    "timer_redirect": "Reindirizzamento tra"
+  }
+}

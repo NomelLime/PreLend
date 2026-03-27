@@ -1,0 +1,58 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Slot Rush Event",
+    "h1": "Slot Rush is live now",
+    "p": "Limited-run event with boosted rounds and special reward pools. Join before the cycle resets.",
+    "f1": "Fast rounds",
+    "f2": "Boost mode",
+    "f3": "Night pool",
+    "cta": "Join Event",
+    "timer_redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Slot Rush",
+    "h1": "Slot Rush läuft jetzt",
+    "cta": "Event beitreten",
+    "timer_redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Slot Rush",
+    "h1": "Slot Rush уже в эфире",
+    "cta": "Участвовать",
+    "timer_redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "h1": "Slot Rush está en vivo",
+    "cta": "Unirse al evento",
+    "timer_redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "cta": "Взяти участь",
+    "timer_redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Dołącz do eventu",
+    "timer_redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Entrar no evento",
+    "timer_redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Rejoindre l'événement",
+    "timer_redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Partecipa",
+    "timer_redirect": "Reindirizzamento tra"
+  }
+}

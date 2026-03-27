@@ -1,0 +1,74 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Quick Wellness Check",
+    "pill": "Personalized report",
+    "h1": "Your 60-second wellness profile is ready",
+    "p": "We prepared a short checkup based on common lifestyle markers. Open it now and get a tailored recommendation set.",
+    "li1": "Sleep and stress score",
+    "li2": "Hydration and energy trend",
+    "li3": "Recommended daily routine",
+    "cta": "View My Results",
+    "foot_redirect": "Automatic redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Kurzer Wellness-Check",
+    "pill": "Persönlicher Report",
+    "h1": "Ihr 60-Sekunden-Wellness-Profil ist bereit",
+    "p": "Wir haben einen kurzen Check auf Basis gängiger Marker vorbereitet.",
+    "li1": "Schlaf- und Stress-Score",
+    "li2": "Hydration und Energie-Trend",
+    "li3": "Empfohlene Tagesroutine",
+    "cta": "Ergebnisse ansehen",
+    "foot_redirect": "Automatische Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Быстрый wellness-чек",
+    "pill": "Персональный отчёт",
+    "h1": "Ваш 60-секундный профиль готов",
+    "p": "Мы подготовили короткую проверку по базовым маркерам.",
+    "cta": "Смотреть результаты",
+    "foot_redirect": "Автоматический переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "page_title": "Chequeo wellness rápido",
+    "pill": "Informe personalizado",
+    "h1": "Tu perfil wellness de 60 segundos está listo",
+    "cta": "Ver mis resultados",
+    "foot_redirect": "Redirección automática en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "page_title": "Швидкий wellness-чек",
+    "h1": "Ваш 60-секундний профіль готовий",
+    "cta": "Переглянути результати",
+    "foot_redirect": "Автоматичне перенаправлення через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "h1": "Twój 60-sekundowy profil wellness jest gotowy",
+    "cta": "Zobacz wyniki",
+    "foot_redirect": "Automatyczne przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "h1": "Seu perfil wellness de 60 segundos está pronto",
+    "cta": "Ver resultados",
+    "foot_redirect": "Redirecionamento automático em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "h1": "Votre profil bien-être 60 secondes est prêt",
+    "cta": "Voir mes résultats",
+    "foot_redirect": "Redirection automatique dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "h1": "Il tuo profilo wellness da 60 secondi è pronto",
+    "cta": "Vedi risultati",
+    "foot_redirect": "Reindirizzamento automatico tra"
+  }
+}

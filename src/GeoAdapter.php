@@ -9,8 +9,11 @@ declare(strict_types=1);
  *   {{CITY}}            → локальный город ("Київ", "Москва"...)
  *   {{REVIEWER}}        → локальное имя рецензента ("Олексій"...)
  *   {{PHONE_PREFIX}}    → телефонный префикс (+380, +7...)
- *   {{LANG}}            → код языка (uk, ru, en, pl...)
+ *   {{LANG}}            → код языка (uk, ru, en, pl...) из geo_data
  *   {{GEO}}             → ISO-2 код страны
+ *
+ * Язык текстов преленда (title, кнопки) задаётся отдельно: ContentLocaleResolver +
+ * TemplateI18n (переменные content_locale, locale_lang, i18n в шаблоне).
  *
  * Использование в TemplateRenderer:
  *   $geo = (new GeoDetector())->getGeo();

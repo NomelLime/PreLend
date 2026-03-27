@@ -1,0 +1,61 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Parlay Boost",
+    "pill": "Boost active",
+    "h1": "Parlay multiplier available now",
+    "p": "Combine picks with enhanced return settings. Offer window may close after market update.",
+    "g1": "Combo builder",
+    "g2": "Cashout option",
+    "g3": "Risk control",
+    "g4": "Fast settlement",
+    "cta": "Open Parlay Boost",
+    "redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Parlay-Boost",
+    "pill": "Boost aktiv",
+    "h1": "Parlay-Multiplikator jetzt verfügbar",
+    "cta": "Parlay Boost öffnen",
+    "redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Parlay Boost",
+    "h1": "Мультипликатор экспресса доступен",
+    "cta": "Открыть Parlay Boost",
+    "redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "h1": "Multiplicador de parlay disponible",
+    "cta": "Abrir Parlay Boost",
+    "redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "cta": "Відкрити Parlay Boost",
+    "redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Otwórz Parlay Boost",
+    "redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Abrir Parlay Boost",
+    "redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Ouvrir Parlay Boost",
+    "redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Apri Parlay Boost",
+    "redirect": "Reindirizzamento tra"
+  }
+}

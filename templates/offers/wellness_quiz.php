@@ -2,18 +2,27 @@
 /** @var string $target_url */
 /** @var int    $delay_ms */
 /** @var int    $delay_sec */
+/** @var array<string, string> $i18n */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 $safeUrl = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl   = addslashes($target_url ?? '');
 $delay   = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Quick Wellness Check</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4fbf7;color:#173223;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -30,16 +39,16 @@ li{margin:6px 0}
 </head>
 <body>
   <div class="box">
-    <div class="pill">Personalized report</div>
-    <h1>Your 60-second wellness profile is ready</h1>
-    <p>We prepared a short checkup based on common lifestyle markers. Open it now and get a tailored recommendation set.</p>
+    <div class="pill"><?= $t('pill') ?></div>
+    <h1><?= $t('h1') ?></h1>
+    <p><?= $t('p') ?></p>
     <ul>
-      <li>Sleep and stress score</li>
-      <li>Hydration and energy trend</li>
-      <li>Recommended daily routine</li>
+      <li><?= $t('li1') ?></li>
+      <li><?= $t('li2') ?></li>
+      <li><?= $t('li3') ?></li>
     </ul>
-    <a href="<?= $safeUrl ?>" class="cta" id="cta">View My Results</a>
-    <div class="foot">Automatic redirect in <span id="count"><?= $delaySec ?></span>s</div>
+    <a href="<?= $safeUrl ?>" class="cta" id="cta"><?= $t('cta') ?></a>
+    <div class="foot"><?= $t('foot_redirect') ?> <span id="count"><?= $delaySec ?></span>s</div>
   </div>
 <script>
 (function(){

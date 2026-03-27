@@ -2,18 +2,27 @@
 /** @var string $target_url */
 /** @var int    $delay_ms */
 /** @var int    $delay_sec */
+/** @var array<string, string> $i18n */
+$i18n = is_array($i18n ?? null) ? $i18n : [];
+$t = static function (string $key) use ($i18n): string {
+    return htmlspecialchars($i18n[$key] ?? '', ENT_QUOTES, 'UTF-8');
+};
+$htmlLang = $t('html_lang');
+if ($htmlLang === '') {
+    $htmlLang = 'en';
+}
 $safeUrl = htmlspecialchars($target_url ?? '', ENT_QUOTES, 'UTF-8');
 $jsUrl   = addslashes($target_url ?? '');
 $delay   = max(500, (int)($delay_ms ?? 1500));
 $delaySec = (int) ceil($delay / 1000);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $htmlLang ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
-<title>Market Briefing — Limited Window</title>
+<title><?= $t('page_title') ?></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#08111f;color:#e6edf7;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -32,16 +41,16 @@ p{color:#b6c7dc;font-size:.95rem;line-height:1.55;margin-bottom:18px}
 </head>
 <body>
   <div class="panel">
-    <div class="kicker">Analyst Signal</div>
-    <h1>A fresh opportunity was flagged for your region</h1>
-    <p>Our model just updated score and confidence metrics. Open the partner page now to lock current conditions before the next refresh cycle.</p>
+    <div class="kicker"><?= $t('kicker') ?></div>
+    <h1><?= $t('h1') ?></h1>
+    <p><?= $t('p') ?></p>
     <div class="stats">
-      <div class="stat"><b>+12.4%</b><span>signal momentum</span></div>
-      <div class="stat"><b>86/100</b><span>confidence index</span></div>
-      <div class="stat"><b>03:00</b><span>window left</span></div>
+      <div class="stat"><b><?= $t('stat1_b') ?></b><span><?= $t('stat1_s') ?></span></div>
+      <div class="stat"><b><?= $t('stat2_b') ?></b><span><?= $t('stat2_s') ?></span></div>
+      <div class="stat"><b><?= $t('stat3_b') ?></b><span><?= $t('stat3_s') ?></span></div>
     </div>
-    <a href="<?= $safeUrl ?>" class="btn" id="goBtn">Open Briefing</a>
-    <div class="timer">Redirect in <span id="t"><?= $delaySec ?></span>s</div>
+    <a href="<?= $safeUrl ?>" class="btn" id="goBtn"><?= $t('cta') ?></a>
+    <div class="timer"><?= $t('timer_redirect') ?> <span id="t"><?= $delaySec ?></span>s</div>
   </div>
 <script>
 (function(){

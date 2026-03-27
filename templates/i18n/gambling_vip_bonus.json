@@ -1,0 +1,62 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "VIP Bonus Invite",
+    "h1": "Private access: VIP welcome package",
+    "p": "Your account qualifies for an enhanced package with limited activation period.",
+    "li1": "Priority support line",
+    "li2": "Higher cashback tier",
+    "li3": "Extended bonus validity",
+    "cta": "Activate Package",
+    "meta_redirect": "Auto redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "VIP-Bonus",
+    "h1": "Privater Zugang: VIP-Willkommenspaket",
+    "p": "Ihr Konto qualifiziert für ein erweitertes Paket.",
+    "li1": "Prioritäts-Support",
+    "li2": "Höhere Cashback-Stufe",
+    "li3": "Längere Bonus-Gültigkeit",
+    "cta": "Paket aktivieren",
+    "meta_redirect": "Auto-Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "VIP-бонус",
+    "h1": "Приватный доступ: VIP-пакет",
+    "cta": "Активировать пакет",
+    "meta_redirect": "Автопереход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "h1": "Acceso privado: paquete VIP",
+    "cta": "Activar paquete",
+    "meta_redirect": "Redirección auto en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "cta": "Активувати пакет",
+    "meta_redirect": "Автоперехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Aktywuj pakiet",
+    "meta_redirect": "Auto przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Ativar pacote",
+    "meta_redirect": "Redirecionamento auto em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Activer le pack",
+    "meta_redirect": "Redirection auto dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Attiva pacchetto",
+    "meta_redirect": "Reindirizzamento auto tra"
+  }
+}

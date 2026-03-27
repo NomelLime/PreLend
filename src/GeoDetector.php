@@ -15,12 +15,14 @@ class GeoDetector
 {
     private string $geo;
     private string $langGeo;
+    private string $acceptLanguagePrimary;
     private bool   $isTor;
 
     public function __construct()
     {
         $this->geo     = $this->detectFromCloudflare();
         $this->langGeo = $this->detectFromLanguage();
+        $this->acceptLanguagePrimary = $this->detectAcceptLanguagePrimary();
         $this->isTor   = ($this->geo === 'T1');
     }
 
@@ -36,6 +38,15 @@ class GeoDetector
     public function getLangGeo(): string
     {
         return $this->langGeo;
+    }
+
+    /**
+     * Первый языковой подтег из Accept-Language (напр. ru из ru-RU), нижний регистр.
+     * Для ContentLocaleResolver при CF-IPCountry = XX.
+     */
+    public function getAcceptLanguagePrimary(): string
+    {
+        return $this->acceptLanguagePrimary;
     }
 
     /** Является ли соединение Tor-узлом */
@@ -82,6 +93,25 @@ class GeoDetector
         }
 
         return 'XX';
+    }
+
+    private function detectAcceptLanguagePrimary(): string
+    {
+        $header = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+        if ($header === '') {
+            return '';
+        }
+
+        $first = explode(',', $header)[0];
+        $first = trim(explode(';', $first)[0]);
+        $parts = explode('-', $first);
+        $lang  = strtolower(trim($parts[0] ?? ''));
+
+        if (preg_match('/^[a-z]{2,3}$/', $lang)) {
+            return $lang;
+        }
+
+        return '';
     }
 
     private function detectFromLanguage(): string

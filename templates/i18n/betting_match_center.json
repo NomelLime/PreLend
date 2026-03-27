@@ -1,0 +1,62 @@
+{
+  "en": {
+    "html_lang": "en",
+    "page_title": "Match Center Access",
+    "h1": "Today's match center is ready",
+    "p": "Open the partner page to access current lines, live updates and pre-match selections in one place.",
+    "chip1": "Live lines",
+    "chip2": "Team stats",
+    "chip3": "Pre-match picks",
+    "cta": "Open Match Center",
+    "timer_redirect": "Redirect in"
+  },
+  "de": {
+    "html_lang": "de",
+    "page_title": "Match Center",
+    "h1": "Das Match Center heute ist bereit",
+    "p": "Partnerseite öffnen für Linien, Live-Updates und Auswahl.",
+    "chip1": "Live-Linien",
+    "chip2": "Team-Stats",
+    "chip3": "Vorab-Tipps",
+    "cta": "Match Center öffnen",
+    "timer_redirect": "Weiterleitung in"
+  },
+  "ru": {
+    "html_lang": "ru",
+    "page_title": "Матч-центр",
+    "h1": "Матч-центр на сегодня готов",
+    "cta": "Открыть матч-центр",
+    "timer_redirect": "Переход через"
+  },
+  "es": {
+    "html_lang": "es",
+    "h1": "El centro de partidos de hoy está listo",
+    "cta": "Abrir centro de partidos",
+    "timer_redirect": "Redirección en"
+  },
+  "uk": {
+    "html_lang": "uk",
+    "cta": "Відкрити матч-центр",
+    "timer_redirect": "Перехід через"
+  },
+  "pl": {
+    "html_lang": "pl",
+    "cta": "Otwórz centrum meczów",
+    "timer_redirect": "Przekierowanie za"
+  },
+  "pt": {
+    "html_lang": "pt",
+    "cta": "Abrir centro de jogos",
+    "timer_redirect": "Redirecionamento em"
+  },
+  "fr": {
+    "html_lang": "fr",
+    "cta": "Ouvrir le centre match",
+    "timer_redirect": "Redirection dans"
+  },
+  "it": {
+    "html_lang": "it",
+    "cta": "Apri match center",
+    "timer_redirect": "Reindirizzamento tra"
+  }
+}
