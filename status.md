@@ -32,15 +32,15 @@ PreLend/
 │   ├── BotFilter.php          # 7 фильтров: PASS/BOT/CLOAK/VPN/OFFGEO/OFFHOURS/TOR
 │   ├── GeoDetector.php        # CF-IPCountry заголовок → ISO-2 код
 │   ├── ClickLogger.php        # INSERT в clicks (SQLite)
-│   ├── Router.php             # Score-based выбор рекламодателя
-│   ├── SubIdBuilder.php       # Финальный URL с sub_id + utm-параметрами
+│   ├── Router.php             # Score-based выбор рекламодателя (+ кеш shave CR на запрос)
 │   ├── Config.php             # Кеш-загрузчик JSON-конфигов
 │   ├── DB.php                 # SQLite PDO singleton
 │   ├── GeoAdapter.php         # Гео-адаптивный контекст для шаблонов
 │   ├── SplitTester.php        # A/B Байесовский split-тест шаблонов
 │   ├── TemplateRenderer.php   # Рендер PHP-шаблонов (offer/cloaked)
 │   ├── ConversionLogger.php   # Запись конверсий в таблицу conversions
-│   └── SubIdBuilder.php       # utm_content = sp_{stem} (воронка SP→PL)
+│   ├── PostbackAuth.php       # Глобальный токен постбэка: getenv(PL_POSTBACK_TOKEN) → settings
+│   └── SubIdBuilder.php       # Финальный URL с sub_id + utm; utm_content = sp_{stem} (воронка SP→PL)
 ├── internal_api/              # FastAPI Internal API (NEW — сессия 8)
 │   ├── main.py                # FastAPI app, /health endpoint
 │   ├── config.py              # Пути, API_KEY, HOST:PORT из env
@@ -48,10 +48,10 @@ PreLend/
 │   ├── requirements.txt       # fastapi, uvicorn
 │   └── routes/
 │       ├── metrics.py         # GET /metrics (+ geo_breakdown), /financial, /funnel
-│       ├── configs.py         # GET/PUT /config/{settings|advertisers|geo_data|splits}
+│       ├── configs.py         # GET/PUT /config/{settings|advertisers|geo_data|splits}; settings без postback_token в whitelist
 │       └── agents.py          # GET /agents, POST /agents/{name}/{stop|start}
 ├── config/
-│   ├── settings.json          # Пороги алертов, cloak_url, redirect_delay_ms
+│   ├── settings.json          # Пороги алертов, cloak_url, redirect_delay_ms (без postback_token в репо — секрет через ENV)
 │   ├── advertisers.json       # Список рекламодателей (id, rate, geo, device, template)
 │   ├── geo_data.json          # Гео-контент для шаблонов (город, валюта, язык)
 │   └── splits.json            # A/B split-тесты шаблонов
@@ -71,7 +71,9 @@ PreLend/
 └── tests/
     ├── test_bot_filter.php    # BotFilter + GeoDetector тесты (вкл. OFFGEO/OFFHOURS)
     ├── test_router.php
-    └── test_conversion_logger.php
+    ├── test_conversion_logger.php
+    ├── test_content_locale.php
+    └── test_postback.php      # PostbackAuth: глобальный токен, приоритет PL_POSTBACK_TOKEN
 ```
 
 ---
@@ -134,6 +136,11 @@ PL_INTERNAL_HOST=127.0.0.1            # Только localhost
 PL_INTERNAL_PORT=9090
 PL_GIT_AUTOCOMMIT=true                # git commit при PUT /config/*
 ```
+
+**Глобальный токен постбэка (`postback.php`):** переменная **`PL_POSTBACK_TOKEN`** должна быть в окружении **PHP-FPM** (не только в `.env` в корне — PHP веб-запросы его не читают автоматически). Пример:
+`/etc/php/8.3/fpm/pool.d/www.conf` → `env[PL_POSTBACK_TOKEN] = ...` → `systemctl reload php8.3-fpm`.
+Если не задана — используется `postback_token` из `config/settings.json` (fallback). Если токен задан (env или json), параметр запроса **`token`** обязателен и совпадает через `hash_equals` (см. `src/PostbackAuth.php`).
+См. также `.env.example` в корне PreLend.
 
 ---
 
@@ -366,3 +373,22 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 | **Документация** | `RUNBOOK_4_PROJECTS.md`: п.20 (два launcher-файла агентов, PreLend на другой машине), п.21 (`start_local_stack` на Windows — без PreLend). |
 
 **После обновления кода на VPS:** `git pull` → при необходимости `pip install -r requirements.txt` → `sudo bash /var/www/prelend/deploy/reload_services.sh` (или алиас `prelend-reload`).
+
+### Сессия 19 (28.03.2026) — Code review: безопасность постбэка, DRY клоаки, Router, тесты
+
+| Область | Изменение |
+|---------|-----------|
+| **`src/PostbackAuth.php`** (NEW) | Проверка глобального токена: `getenv('PL_POSTBACK_TOKEN')` приоритетнее `settings['postback_token']`; если секрет задан, отсутствие верного `token` в запросе → отказ (исправление обхода проверки). |
+| **`public/postback.php`** | Подключён `PostbackAuth`; логика токена централизована. |
+| **`config/settings.json`** | Удалён захардкоженный `postback_token` из репозитория — в проде задать **`PL_POSTBACK_TOKEN`** в php-fpm. |
+| **`internal_api/routes/configs.py`** | Ключ **`postback_token`** убран из whitelist `PUT /config/settings` — нельзя записать секрет в JSON через Internal API. |
+| **`public/index.php`** | Вынесена **`resolveCloakTemplate()`** — один выбор шаблона клоаки для CLOAK / OFFGEO / OFFHOURS (DRY). |
+| **`src/Router.php`** | Оптимизация shave: кеш медианы CR и карта CR по рекламодателям на один HTTP-запрос (меньше N+1 SQL). |
+| **`tests/test_postback.php`** (NEW) | Юнит-тесты `PostbackAuth::globalTokenValid()` (пустой токен, settings, неверный token, приоритет env). |
+| **`.env.example`** | Комментарий: как задать `PL_POSTBACK_TOKEN` в php-fpm. |
+
+**Тесты:** `./tests/run_tests.sh` включает `test_postback.php` (CLI `php` не использует php-fpm env — тест env приоритета через `putenv`). Для боевого `postback.php` секрет задаётся в pool php-fpm.
+
+**После деплоя:**
+1. Задать в **`/etc/php/8.3/fpm/pool.d/www.conf`** (или своём pool): `env[PL_POSTBACK_TOKEN] = ...` и **`systemctl reload php8.3-fpm`**.
+2. Убедиться, что постбэк-URL рекламодателя содержит **`token=`** с тем же значением.
