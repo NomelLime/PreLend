@@ -354,3 +354,15 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Эксплуатация после `git pull` для этой сессии:**
 - Менялись PHP-шаблоны и i18n JSON → достаточно `systemctl reload php8.3-fpm` (или `restart`, если есть следы кеша).
 - `nginx` и `prelend-internal-api` перезапускать не требуется, если их код/конфиги не менялись.
+
+### Сессия 18 (27.03.2026) — Запуск агентов одним скриптом, деплой reload, правка health-check
+
+| Область | Изменение |
+|---------|-----------|
+| **`start_prelend_agents.py`** (корень репо) | Один процесс: все Python-агенты PreLend (COMMANDER, ANALYST, MONITOR, OFFER_ROTATOR). Запуск на **машине с клоном PreLend** (часто VPS). Без ShortsProject; см. `RUNBOOK_4_PROJECTS.md` п.20–21. |
+| **`telegram_router.py` → `PreLendCrew`** | В crew добавлен **OFFER_ROTATOR** (`start`/`stop` вместе с остальными). |
+| **`deploy/reload_services.sh`** (NEW) | Один вызов с `sudo`: `nginx reload` → `php8.3-fpm reload` → `systemctl restart prelend-internal-api`. Переменные: `PHP_VER`, `PRELEND_INTERNAL_API_UNIT`, `PRELEND_SKIP_INTERNAL_API=1`. После restart — **повторные попытки** `curl :9090/health` (~5 с), чтобы не было ложного warn из-за гонки с uvicorn. |
+| **`deploy/deploy.sh`** | В конце вызывается `reload_services.sh`; в подсказках — `sudo bash …/deploy/reload_services.sh` после `git pull`. |
+| **Документация** | `RUNBOOK_4_PROJECTS.md`: п.20 (два launcher-файла агентов, PreLend на другой машине), п.21 (`start_local_stack` на Windows — без PreLend). |
+
+**После обновления кода на VPS:** `git pull` → при необходимости `pip install -r requirements.txt` → `sudo bash /var/www/prelend/deploy/reload_services.sh` (или алиас `prelend-reload`).
