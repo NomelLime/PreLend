@@ -16,4 +16,6 @@ enum FilterResult: string
     case OFFGEO   = 'OFFGEO';
     case OFFHOURS = 'OFFHOURS';
     case TOR      = 'TOR';
+    /** curl/wget/мониторинги — не пишем в clicks (см. index.php) */
+    case PROBE    = 'PROBE';
 }

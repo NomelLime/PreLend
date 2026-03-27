@@ -85,9 +85,9 @@ test('BOT — пустой UA', function () {
     assert_eq(FilterResult::BOT, $f->check($geo));
 });
 
-test('BOT — curl UA', function () {
+test('PROBE — curl UA (не пишется в clicks)', function () {
     [$f, $geo] = make_filter_geo(['HTTP_CF_IPCOUNTRY' => 'UA', 'HTTP_USER_AGENT' => 'curl/7.88.1']);
-    assert_eq(FilterResult::BOT, $f->check($geo));
+    assert_eq(FilterResult::PROBE, $f->check($geo));
 });
 
 test('BOT — python-requests', function () {

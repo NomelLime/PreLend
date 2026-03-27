@@ -11,6 +11,7 @@ declare(strict_types=1);
  *   FilterResult::OFFGEO    — ГЕО не совпадает ни с одним рекламодателем
  *   FilterResult::OFFHOURS  — вне рабочего времени рекламодателя
  *   FilterResult::TOR       — Tor-трафик
+ *   FilterResult::PROBE     — технический клиент (curl, uptime и т.п.) — без записи в БД
  */
 require_once __DIR__ . '/FilterResult.php';
 
@@ -54,6 +55,16 @@ class BotFilter
     ];
 
     // ── Общие боты / парсеры ──────────────────────────────────────────────
+    /** UA-паттерны «технического» трафика: не считаем кликом, не пишем в clicks. */
+    private const TECHNICAL_PROBES = [
+        'curl/', 'wget/', 'httpie/', 'libcurl/', 'axios/', 'go-http-client/',
+        'kube-probe/', 'blackbox exporter', 'prometheus/', 'uptimerobot',
+        'pingdom', 'statuscake', 'site24x7', 'newrelicpinger', 'synthetics',
+        'datadog', 'checkly', 'better uptime', 'betterstack', 'nagios',
+        'zabbix', 'monitoring', 'healthcheck', 'sitebulb', 'lighthouse',
+        'gtmetrix', 'pagespeed',
+    ];
+
     private const GENERIC_BOTS = [
         'bot', 'crawler', 'spider', 'slurp', 'bingbot', 'yahoo',
         'baidu', 'duckduckbot', 'sogou', 'exabot', 'ia_archiver',
@@ -202,6 +213,11 @@ class BotFilter
             return $this->result = FilterResult::CLOAK;
         }
 
+        // 3b. Технические клиенты (curl, мониторинги) — не в статистике кликов
+        if ($this->isTechnicalProbe()) {
+            return $this->result = FilterResult::PROBE;
+        }
+
         // 4. Общие боты / парсеры / headless
         if ($this->isGenericBot()) {
             return $this->result = FilterResult::BOT;
@@ -265,6 +281,17 @@ class BotFilter
     }
 
     // ── Приватные проверки ─────────────────────────────────────────────────
+
+    private function isTechnicalProbe(): bool
+    {
+        $ua = strtolower($this->ua);
+        foreach (self::TECHNICAL_PROBES as $p) {
+            if (str_contains($ua, strtolower($p))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private function isPlatformBot(): bool
     {

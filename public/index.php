@@ -50,6 +50,13 @@ $logger = new ClickLogger($db);
 // ── 3. Роутинг и редирект ─────────────────────────────────────────────────
 switch ($filterResult) {
 
+    case FilterResult::PROBE:
+        // Мониторинг / curl / wget — ответ без записи в clicks (не засоряем метрики)
+        header('Content-Type: text/plain; charset=UTF-8');
+        http_response_code(200);
+        echo "ok\n";
+        break;
+
     case FilterResult::CLOAK:
         // Платформенный сканер — показываем легенду
         // Определяем шаблон по первому подходящему рекламодателю для этого ГЕО
