@@ -32,6 +32,7 @@ define('ROOT', dirname(__DIR__));
 require_once ROOT . '/src/Config.php';
 require_once ROOT . '/src/DB.php';
 require_once ROOT . '/src/ConversionLogger.php';
+require_once ROOT . '/src/PostbackAuth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -54,7 +55,6 @@ $advId    = trim($input['adv_id']    ?? '');
 $date     = trim($input['date']      ?? date('Y-m-d'));
 $count    = max(1, (int)($input['count'] ?? 1));
 $payout   = (float)($input['payout']  ?? 0);
-$token    = trim($input['token']     ?? '');
 
 // ── Валидация обязательных полей ──────────────────────────────────────────────
 if ($clickId === '' || $advId === '') {
@@ -68,9 +68,8 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     $date = date('Y-m-d');
 }
 
-// ── Проверка глобального токена (обратная совместимость) ───────────────────────
-$requiredToken = $settings['postback_token'] ?? '';
-if ($requiredToken !== '' && isset($input['token']) && $input['token'] !== $requiredToken) {
+// ── Проверка глобального токена (PL_POSTBACK_TOKEN в env приоритетнее settings) ─
+if (!PostbackAuth::globalTokenValid($settings, $input)) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'invalid token']);
     exit;

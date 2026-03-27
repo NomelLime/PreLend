@@ -59,17 +59,7 @@ switch ($filterResult) {
 
     case FilterResult::CLOAK:
         // Платформенный сканер — показываем легенду
-        // Определяем шаблон по первому подходящему рекламодателю для этого ГЕО
-        $cloakTemplate = 'expert_review';
-        foreach ($advertisers as $a) {
-            if (($a['status'] ?? '') === 'active') {
-                $geos = $a['geo'] ?? [];
-                if (empty($geos) || in_array($geo->getGeo(), $geos, true)) {
-                    $cloakTemplate = $a['template'] ?? 'expert_review';
-                    break;
-                }
-            }
-        }
+        $cloakTemplate = resolveCloakTemplate($advertisers, $geo);
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'cloaked');   // ok не проверяем — cloak без SubID всегда
         renderCloak($cloakTemplate, $geo->getGeo());
@@ -80,16 +70,7 @@ switch ($filterResult) {
         // Трафик не по ГЕО или вне рабочего времени — клоачим как нецелевой
         $ctx = ClickLogger::buildContext($geo, $filter, null);
         $logger->log($ctx, 'cloaked');   // ok не проверяем — cloak без SubID всегда
-        $cloakTemplate = 'expert_review';
-        foreach ($advertisers as $a) {
-            if (($a['status'] ?? '') === 'active') {
-                $geos = $a['geo'] ?? [];
-                if (empty($geos) || in_array($geo->getGeo(), $geos, true)) {
-                    $cloakTemplate = $a['template'] ?? 'expert_review';
-                    break;
-                }
-            }
-        }
+        $cloakTemplate = resolveCloakTemplate($advertisers, $geo);
         renderCloak($cloakTemplate, $geo->getGeo());
         break;
 
@@ -151,6 +132,26 @@ switch ($filterResult) {
 exit;
 
 // ── Функции вывода ────────────────────────────────────────────────────────
+
+/**
+ * Шаблон клоаки: первый активный рекламодатель под ГЕО или expert_review по умолчанию.
+ *
+ * @param array<int, array<string, mixed>> $advertisers
+ */
+function resolveCloakTemplate(array $advertisers, GeoDetector $geo): string
+{
+    $cloakTemplate = 'expert_review';
+    foreach ($advertisers as $a) {
+        if (($a['status'] ?? '') === 'active') {
+            $geos = $a['geo'] ?? [];
+            if (empty($geos) || in_array($geo->getGeo(), $geos, true)) {
+                $cloakTemplate = $a['template'] ?? 'expert_review';
+                break;
+            }
+        }
+    }
+    return $cloakTemplate;
+}
 
 
 /**

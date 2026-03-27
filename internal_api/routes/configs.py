@@ -36,7 +36,7 @@ _CONFIG_MAP: Dict[str, Path] = {
 _SETTINGS_ALLOWED_KEYS = {
     "default_offer_url", "cloak_url", "db_path", "log_path",
     "alerts", "test_conversion_prefix", "cloudflare", "scoring",
-    "redirect_delay_ms", "timezone", "ollama", "postback_token",
+    "redirect_delay_ms", "timezone", "ollama",
     "cloak_template",
 }
 

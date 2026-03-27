@@ -23,6 +23,5 @@
     "host": "http://127.0.0.1:11434",
     "model": "qwen2.5-vl:7b"
   },
-  "postback_token": "71ccdb6e75d3adff0ad3295eac28d07dbf68ce5ece8213a736121a3576fb1bc971ccdb6e75d3a",
   "cloak_template": "sports_news"
 }

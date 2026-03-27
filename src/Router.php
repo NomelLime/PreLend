@@ -15,6 +15,12 @@ class Router
     private array  $settings;
     private PDO    $db;
 
+    /** Кеш shave: один расчёт медианы CR и карта CR по adv на запрос (см. getShaveCoef). */
+    private ?int   $shaveCacheSince = null;
+    private float  $shaveMedianCr   = 0.0;
+    /** @var array<string, float> */
+    private array  $shaveCrByAdv    = [];
+
     public function __construct(array $advertisers, array $settings, PDO $db)
     {
         $this->advertisers = $advertisers;
@@ -171,58 +177,74 @@ class Router
      * Shave-коэффициент рекламодателя.
      * Сравниваем CR рекламодателя с медианой по всем рекламодателям для данного ГЕО.
      * Если данных нет — считаем shave = 0.
+     *
+     * Медиана и карта CR по adv считаются один раз на запрос (см. ensureShaveCaches).
      */
     private function getShaveCoef(string $advId): float
     {
         try {
-            // Клики за последние 7 дней
             $since = time() - 7 * 86400;
+            $this->ensureShaveCaches($since);
 
-            // CR рекламодателя
-            $stmt = $this->db->prepare("
-                SELECT
-                    (SELECT COUNT(*) FROM conversions WHERE advertiser_id = ? AND created_at >= ?) * 1.0
-                    / NULLIF((SELECT COUNT(*) FROM clicks WHERE advertiser_id = ? AND ts >= ? AND status = 'sent'), 0)
-            ");
-            $stmt->execute([$advId, $since, $advId, $since]);
-            $crAdv = (float)($stmt->fetchColumn() ?? 0.0);
-
+            $crAdv = $this->shaveCrByAdv[$advId] ?? 0.0;
             if ($crAdv === 0.0) {
-                return 0.0; // нет данных — не штрафуем
-            }
-
-            // Медиана CR по всем активным рекламодателям
-            $stmt2 = $this->db->prepare("
-                SELECT advertiser_id,
-                       (SELECT COUNT(*) FROM conversions c WHERE c.advertiser_id = cl.advertiser_id AND c.created_at >= ?) * 1.0
-                       / NULLIF(COUNT(*), 0) AS cr
-                FROM clicks cl
-                WHERE cl.ts >= ? AND cl.status = 'sent'
-                GROUP BY cl.advertiser_id
-                HAVING cr > 0
-            ");
-            $stmt2->execute([$since, $since]);
-            $crs = array_column($stmt2->fetchAll(PDO::FETCH_ASSOC), 'cr');
-
-            if (empty($crs)) {
                 return 0.0;
             }
 
-            sort($crs);
-            $mid    = (int)(count($crs) / 2);
-            $median = count($crs) % 2 === 0
-                ? ($crs[$mid - 1] + $crs[$mid]) / 2
-                : $crs[$mid];
-
+            $median = $this->shaveMedianCr;
             if ($median <= 0) {
                 return 0.0;
             }
 
             $shave = max(0.0, ($median - $crAdv) / $median);
-            return min($shave, 1.0); // не больше 1
+            return min($shave, 1.0);
         } catch (Throwable $e) {
             error_log('[PreLend][Router] getShaveCoef: ' . $e->getMessage());
             return 0.0;
         }
+    }
+
+    /**
+     * Один запрос за медианой CR и картой CR по advertiser_id на окно 7 дней.
+     */
+    private function ensureShaveCaches(int $since): void
+    {
+        if ($this->shaveCacheSince === $since) {
+            return;
+        }
+        $this->shaveCacheSince = $since;
+        $this->shaveMedianCr   = 0.0;
+        $this->shaveCrByAdv    = [];
+
+        $stmt = $this->db->prepare("
+            SELECT cl.advertiser_id AS aid,
+                   (SELECT COUNT(*) FROM conversions c WHERE c.advertiser_id = cl.advertiser_id AND c.created_at >= ?) * 1.0
+                   / NULLIF(COUNT(*), 0) AS cr
+            FROM clicks cl
+            WHERE cl.ts >= ? AND cl.status = 'sent'
+            GROUP BY cl.advertiser_id
+        ");
+        $stmt->execute([$since, $since]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $aid = (string) $row['aid'];
+            $cr  = (float) $row['cr'];
+            $this->shaveCrByAdv[$aid] = $cr;
+        }
+
+        $crs = array_values(array_filter(
+            $this->shaveCrByAdv,
+            static fn(float $v): bool => $v > 0.0
+        ));
+        if ($crs === []) {
+            return;
+        }
+
+        sort($crs);
+        $n    = count($crs);
+        $mid  = (int) ($n / 2);
+        $this->shaveMedianCr = $n % 2 === 0
+            ? ($crs[$mid - 1] + $crs[$mid]) / 2
+            : $crs[$mid];
     }
 }
