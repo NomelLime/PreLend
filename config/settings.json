@@ -23,5 +23,5 @@
     "host": "http://127.0.0.1:11434",
     "model": "qwen2.5-vl:7b"
   },
-  "cloak_template": "sports_news"
+  "cloak_template": "health_magazine"
 }
