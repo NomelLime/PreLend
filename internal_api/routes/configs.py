@@ -35,9 +35,10 @@ _CONFIG_MAP: Dict[str, Path] = {
 # Допустимые top-level ключи в settings.json (whitelist — protection-in-depth)
 _SETTINGS_ALLOWED_KEYS = {
     "default_offer_url", "cloak_url", "db_path", "log_path",
-    "alerts", "test_conversion_prefix", "cloudflare", "scoring",
+    "alerts", "test_conversion_prefix", "test_conversion_day", "cloudflare", "scoring",
     "redirect_delay_ms", "timezone", "ollama",
     "cloak_template",
+    "postback_token",  # PostbackAuth.php
 }
 
 # Максимальный размер тела запроса (байт) — защита от мусорных записей
