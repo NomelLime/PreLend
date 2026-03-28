@@ -8,6 +8,8 @@
 #   PHP_VER=8.3                    — версия PHP-FPM
 #   PRELEND_INTERNAL_API_UNIT      — имя systemd-юнита (по умолчанию prelend-internal-api)
 #   PRELEND_SKIP_INTERNAL_API=1    — не трогать Internal API (если юнит ещё не установлен)
+#
+# Сменили listen= в pool.d — лучше вручную: systemctl restart php*-fpm (см. deploy/UPGRADE_AFTER_GIT_PULL.md)
 
 set -euo pipefail
 

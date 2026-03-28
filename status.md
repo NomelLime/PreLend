@@ -65,9 +65,10 @@ PreLend/
 ├── agents/                    # Python-агенты PreLend (COMMANDER, ANALYST и др.)
 ├── monitor/                   # Мониторинг: health_check, shave_detector, daily_digest
 ├── deploy/
-│   ├── nginx.conf             # Nginx конфиг (блокирует /internal_api снаружи)
-│   ├── deploy.sh              # Скрипт деплоя
-│   └── prelend-internal-api.service  # systemd unit для Internal API (NEW)
+│   ├── nginx.conf                   # Nginx эталон (сокет prelend, deploy|tests в deny)
+│   ├── deploy.sh                    # Скрипт деплоя (PHP-FPM до nginx)
+│   ├── UPGRADE_AFTER_GIT_PULL.md    # Выравнивание сокета / 502 на старом VPS
+│   └── prelend-internal-api.service # systemd unit для Internal API (NEW)
 └── tests/
     ├── test_bot_filter.php    # BotFilter + GeoDetector тесты (вкл. OFFGEO/OFFHOURS)
     ├── test_router.php
@@ -138,7 +139,7 @@ PL_GIT_AUTOCOMMIT=true                # git commit при PUT /config/*
 ```
 
 **Глобальный токен постбэка (`postback.php`):** переменная **`PL_POSTBACK_TOKEN`** должна быть в окружении **PHP-FPM** (не только в `.env` в корне — PHP веб-запросы его не читают автоматически). Пример:
-`/etc/php/8.3/fpm/pool.d/www.conf` → `env[PL_POSTBACK_TOKEN] = ...` → `systemctl reload php8.3-fpm`.
+`/etc/php/8.3/fpm/pool.d/prelend.conf` → `env[PL_POSTBACK_TOKEN] = ...` → `systemctl reload php8.3-fpm` (пул `[prelend]`, сокет `php8.3-fpm-prelend.sock`).
 Если не задана — используется `postback_token` из `config/settings.json` (fallback). Если токен задан (env или json), параметр запроса **`token`** обязателен и совпадает через `hash_equals` (см. `src/PostbackAuth.php`).
 См. также `.env.example` в корне PreLend.
 
@@ -397,7 +398,7 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 
 | Область | Изменение |
 |---------|-----------|
-| **`deploy/deploy.sh`** | Пул **`[prelend]`** слушает **`/run/php/php8.3-fpm-prelend.sock`**, не общий `php8.3-fpm.sock` у `www` — иначе два пула на один сокет ломают старт FPM. Nginx `fastcgi_pass` выровнен под тот же путь. Лимиты: **memory_limit 128M**, **max_execution_time 60**; **fastcgi_read_timeout 90s** в блоках PHP. |
+| **`deploy/deploy.sh`** | Пул **`[prelend]`** слушает **`/run/php/php8.3-fpm-prelend.sock`**, не общий `php8.3-fpm.sock` у `www` — иначе два пула на один сокет ломают старт FPM. Nginx `fastcgi_pass` выровнен под тот же путь. **Порядок шагов:** сначала PHP-FPM (сокет создан), затем nginx. Deny-location как в `nginx.conf`: **`deploy`**, **`tests`**. Лимиты: **128M** / **60s** PHP; **fastcgi_read_timeout 90s**. |
 | **`deploy/nginx.conf`** | Тот же сокет и таймауты (эталон для ручного копирования). |
 | **`.env.example`** | Указан **`pool.d/prelend.conf`** для `env[PL_POSTBACK_TOKEN]`. |
 

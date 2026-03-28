@@ -7,6 +7,8 @@
 
 После `git pull` **файлы в `/etc/nginx/` и `/etc/php/.../pool.d/` сами не меняются** — их правит только `deploy.sh` или руки. Если на VPS nginx всё ещё указывает на старый сокет, а FPM уже слушает новый (или наоборот), получите **502 Bad Gateway**.
 
+Полный **`deploy/deploy.sh`** сначала пишет пул PHP-FPM и делает **`restart`**, затем генерирует nginx и **`reload`** — сокет к моменту первого запроса через nginx уже существует.
+
 Ниже — пошаговая проверка и выравнивание. Версию PHP подставь свою (ниже везде **8.3**).
 
 ---
@@ -116,6 +118,43 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+После **смены пути `listen =` в pool** надёжнее **`systemctl restart php8.3-fpm`**, а не только `reload` (чтобы мастер гарантированно пересоздал сокет).
+
+---
+
+## 5a. Симптом: `502` и в логе `connect() ... failed (111: Connection refused)`
+
+Сообщение **`111: Connection refused`** к сокету `unix:/run/php/php8.3-fpm.sock` значит: nginx дошёл до пути сокета, но **на этом адресе сейчас нет слушающего процесса** (не «нет файла», как при коде **2**).
+
+Чаще всего одно из двух:
+
+1. **Служба `php8.3-fpm` не запущена или упала** (ошибка в pool-конфиге после правок, неверный синтаксис и т.п.).
+2. **Nginx смотрит на `php8.3-fpm.sock`, а единственный рабочий пул PreLend слушает `php8.3-fpm-prelend.sock`**, при этом пул `www` отключён или не создаёт старый сокет — тогда файл сокета может отсутствовать или сокет есть, но accept не идёт (зависит от состояния; после отключения `www` типично именно отказ, если master не слушает там).
+
+Проверка по порядку (на сервере под root/sudo):
+
+```bash
+# Статус и последние ошибки FPM
+sudo systemctl status php8.3-fpm --no-pager
+sudo journalctl -u php8.3-fpm -n 40 --no-pager
+
+# Синтаксис всех пулов (обязательно после любых правок pool.d)
+sudo php-fpm8.3 -t
+
+# Какие сокеты реально есть
+ls -la /run/php/*.sock 2>/dev/null || true
+
+# Куда смотрит nginx
+sudo grep -R "fastcgi_pass" /etc/nginx/sites-enabled/ /etc/nginx/sites-available/ 2>/dev/null
+```
+
+**Действия:**
+
+- Если **`php-fpm8.3 -t` или `systemctl status` показывают ошибку** — исправь файл пула (частые причины: опечатка `list` вместо `listen`, обрезанная строка, два пула с одним `listen`). Затем `sudo systemctl restart php8.3-fpm` и снова `ls -la /run/php/*.sock`.
+- Если **FPM active**, в `pool.d/prelend.conf` указано **`listen = .../php8.3-fpm-prelend.sock`**, а в nginx всё ещё **`fastcgi_pass unix:.../php8.3-fpm.sock`** — выровняй nginx на **`...-prelend.sock`** (оба `location` с PHP, см. §4), затем `nginx -t` и `reload`.
+
+После исправления снова проверь `curl -sI https://домен/`.
+
 ---
 
 ## 6. Быстрая проверка с сервера
@@ -133,7 +172,11 @@ sudo tail -n 40 /var/log/nginx/prelend_error.log
 # или error_log того server{}, который ты правил
 ```
 
-Типичная строка при несовпадении сокета: `connect() to unix:... failed (2: No such file or directory)` или отказ в правах.
+Типичные строки в логе:
+
+- **`(111: Connection refused)`** — на этом сокете никто не слушает или FPM не поднялся; см. **§5a**.
+- **`(2: No such file or directory)`** — неверный путь или сокет ещё не создан (FPM не стартовал).
+- Ошибки прав доступа к сокету — пользователь nginx и `listen.group` / `listen.mode` в пуле.
 
 ---
 

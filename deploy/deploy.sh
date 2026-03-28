@@ -89,7 +89,35 @@ fi
 chmod 600 "${WEBROOT}/.env"
 chown "${DEPLOY_USER}:${DEPLOY_USER}" "${WEBROOT}/.env"
 
-# ── 7. Nginx конфиг ───────────────────────────────────────────────────────────
+# ── 7. PHP-FPM (раньше nginx: сокет должен существовать до reload nginx) ───────
+log "Настраиваем PHP-FPM..."
+PHP_POOL="/etc/php/${PHP_VER}/fpm/pool.d/prelend.conf"
+cat > "${PHP_POOL}" << PHP_POOL_CONF
+[prelend]
+user  = ${DEPLOY_USER}
+group = ${DEPLOY_USER}
+listen = ${PHP_FPM_LISTEN}
+listen.owner = ${DEPLOY_USER}
+listen.group = www-data
+listen.mode  = 0660
+
+pm = dynamic
+pm.max_children      = 10
+pm.start_servers     = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 4
+
+php_admin_value[error_log]   = ${WEBROOT}/logs/php_errors.log
+php_admin_flag[log_errors]   = on
+php_admin_value[memory_limit] = 128M
+php_admin_value[max_execution_time] = 60
+; Postback: задайте env[PL_POSTBACK_TOKEN] здесь (см. .env.example), затем reload php-fpm
+PHP_POOL_CONF
+
+systemctl restart php${PHP_VER}-fpm
+log "PHP-FPM перезапущен"
+
+# ── 8. Nginx конфиг ───────────────────────────────────────────────────────────
 log "Настраиваем Nginx для ${DOMAIN}..."
 cat > "${NGINX_CONF}" << NGINX
 server {
@@ -103,8 +131,8 @@ server {
     access_log /var/log/nginx/prelend_access.log;
     error_log  /var/log/nginx/prelend_error.log;
 
-    # Блокируем прямой доступ к служебным файлам
-    location ~ ^/(config|data|src|monitor|agents|templates|logs)/ {
+    # Блокируем прямой доступ к служебным файлам (как в deploy/nginx.conf)
+    location ~ ^/(config|data|src|monitor|agents|templates|deploy|logs|tests)/ {
         deny all;
         return 404;
     }
@@ -163,34 +191,6 @@ ln -sf "${NGINX_CONF}" /etc/nginx/sites-enabled/prelend 2>/dev/null || true
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 nginx -t && systemctl reload nginx
 log "Nginx настроен"
-
-# ── 8. PHP-FPM ────────────────────────────────────────────────────────────────
-log "Настраиваем PHP-FPM..."
-PHP_POOL="/etc/php/${PHP_VER}/fpm/pool.d/prelend.conf"
-cat > "${PHP_POOL}" << PHP_POOL_CONF
-[prelend]
-user  = ${DEPLOY_USER}
-group = ${DEPLOY_USER}
-listen = ${PHP_FPM_LISTEN}
-listen.owner = ${DEPLOY_USER}
-listen.group = www-data
-listen.mode  = 0660
-
-pm = dynamic
-pm.max_children      = 10
-pm.start_servers     = 2
-pm.min_spare_servers = 1
-pm.max_spare_servers = 4
-
-php_admin_value[error_log]   = ${WEBROOT}/logs/php_errors.log
-php_admin_flag[log_errors]   = on
-php_admin_value[memory_limit] = 128M
-php_admin_value[max_execution_time] = 60
-; Postback: задайте env[PL_POSTBACK_TOKEN] здесь (см. .env.example), затем reload php-fpm
-PHP_POOL_CONF
-
-systemctl restart php${PHP_VER}-fpm
-log "PHP-FPM перезапущен"
 
 # ── 9. Cron задачи ────────────────────────────────────────────────────────────
 log "Устанавливаем cron задачи..."
