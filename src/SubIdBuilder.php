@@ -57,7 +57,7 @@ class SubIdBuilder
             if ($key === $subParam) {
                 continue;
             }
-            $baseParams[$key] = self::sanitizeValue($value);
+            $baseParams[$key] = self::normalizeQueryParam($value);
         }
 
         return $baseUrl . '?' . http_build_query($baseParams);
@@ -87,7 +87,7 @@ class SubIdBuilder
         $utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
         foreach ($utmKeys as $key) {
             if (!empty($_GET[$key])) {
-                $params[$key] = self::sanitizeValue($_GET[$key]);
+                $params[$key] = self::normalizeQueryParam($_GET[$key]);
             }
         }
 
@@ -97,9 +97,32 @@ class SubIdBuilder
 
     // ── Приватные методы ──────────────────────────────────────────────────
 
-    private static function sanitizeValue(string $value): string
+    /**
+     * PHP кладёт в $_GET массив для параметров вида utm_source[]=a&utm_source[]=b.
+     *
+     * @param mixed $value
+     */
+    private static function normalizeQueryParam(mixed $value): string
     {
-        // Убираем управляющие символы, ограничиваем длину
+        if (is_array($value)) {
+            $parts = [];
+            foreach ($value as $item) {
+                if (is_array($item)) {
+                    $nested = self::normalizeQueryParam($item);
+                    if ($nested !== '') {
+                        $parts[] = $nested;
+                    }
+                } elseif (is_scalar($item)) {
+                    $parts[] = (string) $item;
+                }
+            }
+            $value = implode(',', $parts);
+        } elseif (is_scalar($value)) {
+            $value = (string) $value;
+        } else {
+            $value = '';
+        }
+
         $value = preg_replace('/[\x00-\x1F\x7F]/', '', $value);
         return substr($value, 0, 256);
     }
