@@ -12,6 +12,15 @@ from pathlib import Path
 # Корень PreLend (на уровень выше internal_api/)
 ROOT = Path(__file__).resolve().parent.parent
 
+# GitHub/.secrets.env → PreLend/.env (как у остальных сервисов монорепы)
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT.parent / ".secrets.env", override=False)
+    load_dotenv(ROOT / ".env", override=True)
+except ImportError:
+    pass
+
 # ── Пути к данным PreLend ──────────────────────────────────────────────────────
 CLICKS_DB        = ROOT / "data"   / "clicks.db"
 SETTINGS_JSON    = ROOT / "config" / "settings.json"

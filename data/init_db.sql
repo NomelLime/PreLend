@@ -94,3 +94,39 @@ CREATE INDEX IF NOT EXISTS idx_split_results_ts      ON split_results(ts);
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_conv_rate_limit
     ON conversions (advertiser_id, source, created_at);
+
+-- ─────────────────────────────────────────
+--  shave_cache (batch CR / shave — горячий путь Router)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS shave_cache (
+    advertiser_id TEXT PRIMARY KEY,
+    shave_coef    REAL NOT NULL DEFAULT 0.0,
+    cr            REAL,
+    median_cr     REAL,
+    calculated_at INTEGER NOT NULL
+);
+
+-- ─────────────────────────────────────────
+--  click_fingerprints (дедуп кликов по IP+UA)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS click_fingerprints (
+    fp_hash     TEXT PRIMARY KEY,
+    click_id    TEXT NOT NULL,
+    created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fp_created ON click_fingerprints(created_at);
+
+-- ─────────────────────────────────────────
+--  video_links (регистрация видео SP → UTM, Internal API)
+-- ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS video_links (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_stem      TEXT NOT NULL,
+    platform        TEXT NOT NULL,
+    video_url       TEXT,
+    account_name    TEXT,
+    utm_content     TEXT NOT NULL UNIQUE,
+    tracking_url    TEXT NOT NULL,
+    created_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_video_links_stem ON video_links(video_stem);

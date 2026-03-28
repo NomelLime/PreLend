@@ -20,7 +20,7 @@ class GeoDetector
 
     public function __construct()
     {
-        $this->geo     = $this->detectFromCloudflare();
+        $this->geo     = GeoAdapter::resolveGeo(self::getRealIp());
         $this->langGeo = $this->detectFromLanguage();
         $this->acceptLanguagePrimary = $this->detectAcceptLanguagePrimary();
         $this->isTor   = ($this->geo === 'T1');
@@ -55,6 +55,18 @@ class GeoDetector
         return $this->isTor;
     }
 
+    /**
+     * Реальный IP клиента (Cloudflare → CF-Connecting-IP, иначе REMOTE_ADDR).
+     */
+    public static function getRealIp(): string
+    {
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            return trim((string) $_SERVER['HTTP_CF_CONNECTING_IP']);
+        }
+
+        return trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    }
+
     /** ГЕО известно (не XX и не T1) */
     public function isKnown(): bool
     {
@@ -74,26 +86,6 @@ class GeoDetector
     }
 
     // ── Приватные методы ──────────────────────────────────────────────────
-
-    private function detectFromCloudflare(): string
-    {
-        // Cloudflare добавляет CF-IPCountry → PHP конвертирует в HTTP_CF_IPCOUNTRY
-        $raw = $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '';
-
-        if ($raw === '') {
-            // Локальная разработка / прямой запрос без CF
-            return 'XX';
-        }
-
-        $code = strtoupper(trim($raw));
-
-        // Допускаем только ISO-2 + спецкоды CF
-        if (preg_match('/^[A-Z]{2}$/', $code) || $code === 'T1') {
-            return $code;
-        }
-
-        return 'XX';
-    }
 
     private function detectAcceptLanguagePrimary(): string
     {

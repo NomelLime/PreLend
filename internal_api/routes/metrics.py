@@ -14,13 +14,26 @@ import sqlite3
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from .. import config as cfg
 from ..auth import require_api_key
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _run_recalc_shave_impl() -> tuple[int, float | None]:
+    """Импорт логики из cron/recalc_shave.py без дублирования кода."""
+    import importlib.util
+
+    path = cfg.ROOT / "cron" / "recalc_shave.py"
+    spec = importlib.util.spec_from_file_location("prelend_recalc_shave", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("recalc_shave.py не найден")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.run_recalc()
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -71,6 +84,7 @@ def get_metrics(
         "shave_suspects":   [],
         "analyst_verdicts": {},
         "agent_statuses":   {},
+        "by_advertiser":    [],
     }
 
     # ── clicks.db ──────────────────────────────────────────────────────────────
@@ -139,6 +153,63 @@ def get_metrics(
                     }
                 )
             result["geo_breakdown"] = breakdown
+
+            # Разбивка по рекламодателям (для ContentHub /api/advertisers/compare)
+            by_adv: Dict[str, Dict[str, Any]] = {}
+            adv_click_rows = conn.execute(
+                """
+                SELECT
+                    COALESCE(NULLIF(TRIM(advertiser_id), ''), '—') AS aid,
+                    COUNT(*) AS clicks,
+                    SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) AS conv_on_click
+                FROM clicks
+                WHERE ts >= ? AND is_test = 0 AND status NOT IN ('bot', 'cloaked')
+                GROUP BY 1
+                """,
+                (since_ts,),
+            ).fetchall()
+            for gr in adv_click_rows:
+                aid = str(gr["aid"] or "—")
+                c = int(gr["clicks"] or 0)
+                by_adv[aid] = {
+                    "advertiser_id": aid,
+                    "clicks": c,
+                    "conversions": 0,
+                    "cr": 0.0,
+                }
+
+            conv_adv_rows = conn.execute(
+                """
+                SELECT advertiser_id, SUM(count) AS cnt
+                FROM conversions
+                WHERE created_at >= ?
+                GROUP BY advertiser_id
+                """,
+                (since_ts,),
+            ).fetchall()
+            for gr in conv_adv_rows:
+                aid_raw = gr["advertiser_id"]
+                aid = str(aid_raw).strip() if aid_raw is not None else "—"
+                if not aid:
+                    aid = "—"
+                cnt = int(gr["cnt"] or 0)
+                if aid not in by_adv:
+                    by_adv[aid] = {
+                        "advertiser_id": aid,
+                        "clicks": 0,
+                        "conversions": 0,
+                        "cr": 0.0,
+                    }
+                by_adv[aid]["conversions"] = cnt
+
+            by_list = []
+            for row in by_adv.values():
+                c = int(row["clicks"])
+                conv = int(row["conversions"])
+                row["cr"] = round(conv / c, 6) if c > 0 else 0.0
+                by_list.append(row)
+            by_list.sort(key=lambda x: (-x["clicks"], x["advertiser_id"]))
+            result["by_advertiser"] = by_list
 
         except Exception as exc:
             logger.error("[metrics] Ошибка чтения clicks.db: %s", exc)
@@ -247,3 +318,57 @@ def get_funnel_data(
         conn.close()
 
     return result
+
+
+@router.post("/metrics/recalc-shave")
+async def recalc_shave(_key: str = Depends(require_api_key)):
+    """Пересчёт shave_cache (cron или вручную)."""
+    try:
+        n, median = _run_recalc_shave_impl()
+        pct = round(median * 100, 4) if median else None
+        return {"recalculated": n, "median_cr": pct}
+    except Exception as exc:
+        logger.exception("[metrics/recalc-shave] %s", exc)
+        raise HTTPException(500, str(exc)) from exc
+
+
+@router.post("/register_video")
+async def register_video(body: dict, _key: str = Depends(require_api_key)):
+    """Регистрирует видео SP и возвращает трекинговый URL с UTM."""
+    video_stem = str(body.get("video_stem") or "").strip()
+    platform = str(body.get("platform") or "").strip()
+    video_url = str(body.get("video_url") or "").strip()
+    account = str(body.get("account") or "").strip()
+    if not video_stem or not platform:
+        raise HTTPException(400, "video_stem and platform required")
+
+    utm_content = f"sp_{video_stem}_{platform}"
+    settings = _safe_read_json(cfg.SETTINGS_JSON) or {}
+    base_url = str(settings.get("default_offer_url") or "https://pulsority.com").rstrip("/")
+    tracking_url = (
+        f"{base_url}?utm_source={platform}"
+        f"&utm_medium=shorts"
+        f"&utm_content={utm_content}"
+    )
+
+    conn = _connect_clicks()
+    if not conn:
+        raise HTTPException(503, "clicks.db недоступна")
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO video_links
+            (video_stem, platform, video_url, account_name, utm_content, tracking_url, created_at)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (video_stem, platform, video_url or None, account or None, utm_content, tracking_url, int(time.time())),
+        )
+        conn.commit()
+    except Exception as exc:
+        logger.error("[register_video] %s", exc)
+        raise HTTPException(500, str(exc)) from exc
+    finally:
+        conn.close()
+
+    return {"tracking_url": tracking_url, "utm_content": utm_content}

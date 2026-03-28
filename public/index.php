@@ -92,25 +92,40 @@ switch ($filterResult) {
         // Определяем is_test по параметру ?test=1
         $isTest = isset($_GET['test']) && $_GET['test'] === '1';
 
-        if ($adv !== null) {
-            $ctx    = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
-            $result = $logger->log($ctx, 'sent');
+        $ip              = GeoDetector::getRealIp();
+        $uaHash          = $filter->getUaHash();
+        $existingClickId = $logger->isDuplicateFingerprint($ip, $uaHash, 60);
+
+        if ($existingClickId !== null) {
+            $clickId = $existingClickId;
+            if ($adv !== null) {
+                $url      = SubIdBuilder::build($adv, $clickId);
+                $template = $adv['template'] ?? 'expert_review';
+            } else {
+                $url      = SubIdBuilder::buildDefault($defaultOfferUrl);
+                $template = 'expert_review';
+            }
+        } elseif ($adv !== null) {
+            $ctx     = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
+            $result  = $logger->log($ctx, 'sent');
             $clickId = $result['click_id'];
             if (!$result['ok']) {
-                // INSERT упал — не передаём мёртвый click_id рекламодателю
                 error_log('[PreLend] INSERT click failed — redirect без SubID');
                 $url = $adv['url'] ?? $defaultOfferUrl;
             } else {
                 $url = SubIdBuilder::build($adv, $clickId);
+                $logger->recordFingerprint($ip, $uaHash, $clickId);
             }
             $template = $adv['template'] ?? 'expert_review';
         } else {
-            // Нет подходящего рекламодателя → дефолтный оффер
             $ctx     = ClickLogger::buildContext($geo, $filter, null, $isTest);
             $result  = $logger->log($ctx, 'sent');
             $clickId = $result['click_id'];
             $url     = SubIdBuilder::buildDefault($defaultOfferUrl);
             $template = 'expert_review';
+            if ($result['ok']) {
+                $logger->recordFingerprint($ip, $uaHash, $clickId);
+            }
         }
 
         // A/B split-тест: проверяем есть ли активный тест для этого ГЕО

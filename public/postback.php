@@ -33,6 +33,7 @@ require_once ROOT . '/src/Config.php';
 require_once ROOT . '/src/DB.php';
 require_once ROOT . '/src/ConversionLogger.php';
 require_once ROOT . '/src/PostbackAuth.php';
+require_once ROOT . '/src/ContentHubEvents.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -150,6 +151,20 @@ $notes = $payout > 0 ? "payout={$payout}" : '';
 $result = $logger->logApi($clickId, $advId, $date, $count, $notes);
 
 if (!$result['ok']) {
+    if (($result['error'] ?? '') !== 'duplicate') {
+        $retryFile = ROOT . '/data/postback_retry.jsonl';
+        $retryEntry = json_encode([
+            'click_id'  => $clickId,
+            'adv_id'    => $advId,
+            'date'      => $date,
+            'count'     => $count,
+            'payout'    => $payout,
+            'notes'     => $notes,
+            'failed_at' => time(),
+            'error'     => $result['error'] ?? 'unknown',
+        ], JSON_UNESCAPED_UNICODE);
+        @file_put_contents($retryFile, $retryEntry . "\n", FILE_APPEND | LOCK_EX);
+    }
     $status = $result['error'] === 'duplicate' ? 'duplicate' : 'error';
     $code   = $result['error'] === 'duplicate' ? 200 : 400;
     http_response_code($code);
@@ -161,6 +176,8 @@ if (!$result['ok']) {
 }
 
 // ── Успех ─────────────────────────────────────────────────────────────────────
+ContentHubEvents::pushConversion($advId, $clickId, (string) $result['conv_id']);
+
 http_response_code(200);
 echo json_encode([
     'status'  => 'ok',

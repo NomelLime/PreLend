@@ -70,6 +70,33 @@ class ClickLogger
         }
     }
 
+    /**
+     * Повторный клик с тем же IP+UA в окне TTL — возвращает существующий click_id.
+     */
+    public function isDuplicateFingerprint(string $ip, string $uaHash, int $ttlSec = 60): ?string
+    {
+        $fpHash = hash('sha256', $ip . $uaHash);
+        $since  = time() - $ttlSec;
+
+        $stmt = $this->db->prepare(
+            'SELECT click_id FROM click_fingerprints WHERE fp_hash = ? AND created_at >= ?'
+        );
+        $stmt->execute([$fpHash, $since]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ? (string) $row['click_id'] : null;
+    }
+
+    public function recordFingerprint(string $ip, string $uaHash, string $clickId): void
+    {
+        $fpHash = hash('sha256', $ip . $uaHash);
+        $stmt   = $this->db->prepare(
+            'INSERT OR REPLACE INTO click_fingerprints (fp_hash, click_id, created_at)
+             VALUES (?, ?, ?)'
+        );
+        $stmt->execute([$fpHash, $clickId, time()]);
+    }
+
     // ── Вспомогательные методы ────────────────────────────────────────────
 
     /**
@@ -84,7 +111,7 @@ class ClickLogger
     ): array {
         return [
             'ts'            => time(),
-            'ip'            => self::getRealIp(),
+            'ip'            => GeoDetector::getRealIp(),
             'geo'           => $geo->getGeo(),
             'device'        => $filter->getDeviceType(),
             'platform'      => $filter->getPlatform(),
@@ -108,11 +135,4 @@ class ClickLogger
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
-    private static function getRealIp(): string
-    {
-        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
-        }
-        return $_SERVER['REMOTE_ADDR'] ?? '';
-    }
 }

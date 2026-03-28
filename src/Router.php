@@ -15,12 +15,6 @@ class Router
     private array  $settings;
     private PDO    $db;
 
-    /** Кеш shave: один расчёт медианы CR и карта CR по adv на запрос (см. getShaveCoef). */
-    private ?int   $shaveCacheSince = null;
-    private float  $shaveMedianCr   = 0.0;
-    /** @var array<string, float> */
-    private array  $shaveCrByAdv    = [];
-
     public function __construct(array $advertisers, array $settings, PDO $db)
     {
         $this->advertisers = $advertisers;
@@ -174,77 +168,20 @@ class Router
     }
 
     /**
-     * Shave-коэффициент рекламодателя.
-     * Сравниваем CR рекламодателя с медианой по всем рекламодателям для данного ГЕО.
-     * Если данных нет — считаем shave = 0.
-     *
-     * Медиана и карта CR по adv считаются один раз на запрос (см. ensureShaveCaches).
+     * Shave-коэффициент из таблицы shave_cache (пересчёт cron / Internal API).
      */
     private function getShaveCoef(string $advId): float
     {
         try {
-            $since = time() - 7 * 86400;
-            $this->ensureShaveCaches($since);
-
-            $crAdv = $this->shaveCrByAdv[$advId] ?? 0.0;
-            if ($crAdv === 0.0) {
-                return 0.0;
-            }
-
-            $median = $this->shaveMedianCr;
-            if ($median <= 0) {
-                return 0.0;
-            }
-
-            $shave = max(0.0, ($median - $crAdv) / $median);
-            return min($shave, 1.0);
+            $stmt = $this->db->prepare(
+                'SELECT shave_coef FROM shave_cache WHERE advertiser_id = ? LIMIT 1'
+            );
+            $stmt->execute([$advId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? (float) $row['shave_coef'] : 0.0;
         } catch (Throwable $e) {
             error_log('[PreLend][Router] getShaveCoef: ' . $e->getMessage());
             return 0.0;
         }
-    }
-
-    /**
-     * Один запрос за медианой CR и картой CR по advertiser_id на окно 7 дней.
-     */
-    private function ensureShaveCaches(int $since): void
-    {
-        if ($this->shaveCacheSince === $since) {
-            return;
-        }
-        $this->shaveCacheSince = $since;
-        $this->shaveMedianCr   = 0.0;
-        $this->shaveCrByAdv    = [];
-
-        $stmt = $this->db->prepare("
-            SELECT cl.advertiser_id AS aid,
-                   (SELECT COUNT(*) FROM conversions c WHERE c.advertiser_id = cl.advertiser_id AND c.created_at >= ?) * 1.0
-                   / NULLIF(COUNT(*), 0) AS cr
-            FROM clicks cl
-            WHERE cl.ts >= ? AND cl.status = 'sent'
-            GROUP BY cl.advertiser_id
-        ");
-        $stmt->execute([$since, $since]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $row) {
-            $aid = (string) $row['aid'];
-            $cr  = (float) $row['cr'];
-            $this->shaveCrByAdv[$aid] = $cr;
-        }
-
-        $crs = array_values(array_filter(
-            $this->shaveCrByAdv,
-            static fn(float $v): bool => $v > 0.0
-        ));
-        if ($crs === []) {
-            return;
-        }
-
-        sort($crs);
-        $n    = count($crs);
-        $mid  = (int) ($n / 2);
-        $this->shaveMedianCr = $n % 2 === 0
-            ? ($crs[$mid - 1] + $crs[$mid]) / 2
-            : $crs[$mid];
     }
 }
