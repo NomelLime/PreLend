@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # deploy/deploy.sh — Деплой PreLend на VPS (Ubuntu 22/24 + Nginx + PHP-FPM)
 #
+# Уже настроенный сервер после git pull (сокет nginx ↔ php-fpm): см. deploy/UPGRADE_AFTER_GIT_PULL.md
+#
 # Использование:
 #   bash deploy/deploy.sh
 # После обновления кода из git (без полного deploy):
@@ -18,6 +20,8 @@ DOMAIN="${PRELEND_DOMAIN:-yourdomain.me}"
 WEBROOT="/var/www/prelend"
 NGINX_CONF="/etc/nginx/sites-available/prelend"
 PHP_VER="8.3"
+# Отдельный сокет пула [prelend], чтобы не конфликтовать со стандартным pool www (php8.3-fpm.sock).
+PHP_FPM_LISTEN="/run/php/php${PHP_VER}-fpm-prelend.sock"
 PYTHON="/usr/bin/python3"
 REPO="https://github.com/NomelLime/PreLend.git"
 GIT_TOKEN="${GIT_TOKEN:-}"    # если приватный репо
@@ -107,20 +111,22 @@ server {
 
     # Постбэк — отдельный location для ясности
     location = /postback.php {
-        fastcgi_pass  unix:/run/php/php${PHP_VER}-fpm.sock;
+        fastcgi_pass  unix:${PHP_FPM_LISTEN};
         fastcgi_index index.php;
         include       fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_read_timeout 90s;
         # Ограничение rate для постбэков (не более 30/сек)
         limit_req zone=postback burst=30 nodelay;
     }
 
     # PHP
     location ~ \.php\$ {
-        fastcgi_pass  unix:/run/php/php${PHP_VER}-fpm.sock;
+        fastcgi_pass  unix:${PHP_FPM_LISTEN};
         fastcgi_index index.php;
         include       fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_read_timeout 90s;
     }
 
     # Bio-ссылки с UTM (Сессия 12C)
@@ -165,7 +171,7 @@ cat > "${PHP_POOL}" << PHP_POOL_CONF
 [prelend]
 user  = ${DEPLOY_USER}
 group = ${DEPLOY_USER}
-listen = /run/php/php${PHP_VER}-fpm.sock
+listen = ${PHP_FPM_LISTEN}
 listen.owner = ${DEPLOY_USER}
 listen.group = www-data
 listen.mode  = 0660
@@ -178,8 +184,9 @@ pm.max_spare_servers = 4
 
 php_admin_value[error_log]   = ${WEBROOT}/logs/php_errors.log
 php_admin_flag[log_errors]   = on
-php_admin_value[memory_limit] = 64M
-php_admin_value[max_execution_time] = 5
+php_admin_value[memory_limit] = 128M
+php_admin_value[max_execution_time] = 60
+; Postback: задайте env[PL_POSTBACK_TOKEN] здесь (см. .env.example), затем reload php-fpm
 PHP_POOL_CONF
 
 systemctl restart php${PHP_VER}-fpm

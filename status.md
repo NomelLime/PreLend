@@ -390,5 +390,19 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Тесты:** `./tests/run_tests.sh` включает `test_postback.php` (CLI `php` не использует php-fpm env — тест env приоритета через `putenv`). Для боевого `postback.php` секрет задаётся в pool php-fpm.
 
 **После деплоя:**
-1. Задать в **`/etc/php/8.3/fpm/pool.d/www.conf`** (или своём pool): `env[PL_POSTBACK_TOKEN] = ...` и **`systemctl reload php8.3-fpm`**.
+1. Задать в **`/etc/php/8.3/fpm/pool.d/prelend.conf`**: `env[PL_POSTBACK_TOKEN] = ...` и **`systemctl reload php8.3-fpm`** (pool **`[prelend]`**, сокет **`php8.3-fpm-prelend.sock`** — см. `deploy/deploy.sh` / `deploy/nginx.conf`).
 2. Убедиться, что постбэк-URL рекламодателя содержит **`token=`** с тем же значением.
+
+### Сессия 20 (28.03.2026) — Деплой: сокет PHP-FPM и 502
+
+| Область | Изменение |
+|---------|-----------|
+| **`deploy/deploy.sh`** | Пул **`[prelend]`** слушает **`/run/php/php8.3-fpm-prelend.sock`**, не общий `php8.3-fpm.sock` у `www` — иначе два пула на один сокет ломают старт FPM. Nginx `fastcgi_pass` выровнен под тот же путь. Лимиты: **memory_limit 128M**, **max_execution_time 60**; **fastcgi_read_timeout 90s** в блоках PHP. |
+| **`deploy/nginx.conf`** | Тот же сокет и таймауты (эталон для ручного копирования). |
+| **`.env.example`** | Указан **`pool.d/prelend.conf`** для `env[PL_POSTBACK_TOKEN]`. |
+
+**502 после правок / restart:** проверить **`php-fpm8.3 -t`**, **`systemctl status php8.3-fpm`**, что в **`sites-available`** для сайта **`fastcgi_pass`** совпадает с **`listen =`** в **`prelend.conf`**, и что сокет есть: **`ls -la /run/php/*.sock`**. Править nginx/php-fpm только в конфиг-файлах, не строками `listen=` в интерактивном bash.
+
+**Пошаговая инструкция после `git pull` на уже настроенном VPS** (поиск vhost, правка обоих `fastcgi_pass`, `nginx -t`, проверка curl, альтернатива через `deploy.sh`): **`deploy/UPGRADE_AFTER_GIT_PULL.md`**.
+
+**`status.md` и git:** файл помечен в шапке как локальный журнал сессий; если он в **`.gitignore`** — в remote не уйдёт. Операционные гайды для команды лучше держать в **`deploy/*.md`** (тот же апгрейд-док).
