@@ -48,7 +48,7 @@ PreLend/
 │   ├── requirements.txt       # fastapi, uvicorn
 │   └── routes/
 │       ├── metrics.py         # GET /metrics (+ geo_breakdown), /financial, /funnel
-│       ├── configs.py         # GET/PUT /config/{settings|advertisers|geo_data|splits}; settings без postback_token в whitelist
+│       ├── configs.py         # GET/PUT /config/{...}; whitelist top-level ключей settings (в т.ч. cloak_template, test_conversion_day, postback_token)
 │       └── agents.py          # GET /agents, POST /agents/{name}/{stop|start}
 ├── config/
 │   ├── settings.json          # Пороги алертов, cloak_url, redirect_delay_ms (без postback_token в репо — секрет через ENV)
@@ -426,3 +426,13 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Проверка после инцидентов:** `curl -sf http://127.0.0.1:9090/health`, `curl -sI https://домен/`, `./tests/run_tests.sh`.
 
 **Итог сессии:** сайт и Internal API работают; тесты прогнаны успешно.
+
+### Сессия 22 (28.03.2026) — ContentHub: сохранение settings и whitelist
+
+| Область | Изменение |
+|---------|-----------|
+| **`internal_api/routes/configs.py`** | В whitelist **`PUT /config/settings`** добавлены ключи **`test_conversion_day`** и **`postback_token`**, чтобы ContentHub мог отправлять полный объект `settings.json` без ответа **400** из‑за «лишних» полей. Секрет постбэка по-прежнему предпочтительно задавать через **`PL_POSTBACK_TOKEN`** в php-fpm (см. сессия 19). |
+
+**Перезапуск после правок Internal API:** `sudo systemctl restart prelend-internal-api`.
+
+**Связка с ContentHub:** см. `ContentHub/status.md` — сессия 11 (28.03.2026): превью + CORS + `write_pl_settings` / **502** с текстом ошибки, опция **`CONTENTHUB_PL_SETTINGS_TRUST_LOCAL_FALLBACK`**.
