@@ -74,7 +74,8 @@ PreLend/
     ├── test_router.php
     ├── test_conversion_logger.php
     ├── test_content_locale.php
-    └── test_postback.php      # PostbackAuth: глобальный токен, приоритет PL_POSTBACK_TOKEN
+    ├── test_postback.php      # PostbackAuth: глобальный токен, приоритет PL_POSTBACK_TOKEN
+    └── test_subid_builder.php # SubIdBuilder: массивы в $_GET (normalizeQueryParam)
 ```
 
 ---
@@ -173,7 +174,7 @@ ssh -N -L 9090:127.0.0.1:9090 user@vps-ip
 [x] systemd unit для Internal API
 [x] Nginx блок `/internal_api` (reference: `deploy/nginx.conf`; на боевом — проверить)
 [ ] Настройка SSH tunnel / WireGuard на боевом сервере
-[ ] Первый боевой запуск Internal API (если ещё не включён `prelend-internal-api`)
+[x] Первый боевой запуск Internal API (`prelend-internal-api`, venv + `PL_INTERNAL_API_KEY`) — см. сессия 21
 
 ---
 
@@ -407,3 +408,21 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Пошаговая инструкция после `git pull` на уже настроенном VPS** (поиск vhost, правка обоих `fastcgi_pass`, `nginx -t`, проверка curl, альтернатива через `deploy.sh`): **`deploy/UPGRADE_AFTER_GIT_PULL.md`**.
 
 **`status.md` и git:** файл помечен в шапке как локальный журнал сессий; если он в **`.gitignore`** — в remote не уйдёт. Операционные гайды для команды лучше держать в **`deploy/*.md`** (тот же апгрейд-док).
+
+### Сессия 21 (28.03.2026) — Прод pulsority: 502, Internal API, SubIdBuilder, тесты (статус: ок)
+
+| Область | Изменение / факт |
+|---------|------------------|
+| **Nginx ↔ PHP-FPM** | Ошибка **`111: Connection refused`** на **`php8.3-fpm.sock`**: nginx не совпадал с пулом **`[prelend]`** на **`php8.3-fpm-prelend.sock`**. Выровнено **`fastcgi_pass`** в vhost + проверка **`listen`** в **`prelend.conf`**. |
+| **`deploy/UPGRADE_AFTER_GIT_PULL.md`** | Расширен: симптом **111**, при смене **`listen`** — **`restart` php-fpm;** блок **203/EXEC** Internal API; ссылка из **`reload_services.sh`**. |
+| **`prelend-internal-api`** | **`status=203/EXEC`**: не было **`/var/www/prelend/venv/bin/uvicorn`**. Решение: **`rm -rf venv`** при конфликте прав (часто venv от root), затем **`python3 -m venv`**, **`pip install -r internal_api/requirements.txt`**, **`chown -R www-data:www-data venv`**. Unit: **`User=www-data`** (шаблон в репо обновлён). |
+| **`deploy/deploy.sh`** | Автосоздание **`venv`** + установка **`internal_api/requirements.txt`**, чтобы после деплоя не ловить 203. |
+| **`src/SubIdBuilder.php`** | Исправлен **TypeError**: в **`$_GET`** бывают **массивы** (`param[]=`); введён **`normalizeQueryParam()`**. |
+| **`tests/test_subid_builder.php`** | NEW — регрессия на массивы в query. |
+| **`postback.php`** | Проверка URL: нужны **`click_id`** и **`adv_id`**; при заданном **`PL_POSTBACK_TOKEN`** — ещё **`token=`**. |
+
+**Тесты на VPS / локально:** из корня PreLend **`./tests/run_tests.sh`** (или **`php`**, **`pytest`** по отдельным файлам — см. инструкцию в чате сессии).
+
+**Проверка после инцидентов:** `curl -sf http://127.0.0.1:9090/health`, `curl -sI https://домен/`, `./tests/run_tests.sh`.
+
+**Итог сессии:** сайт и Internal API работают; тесты прогнаны успешно.
