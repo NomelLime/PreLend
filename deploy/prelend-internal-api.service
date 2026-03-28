@@ -4,12 +4,14 @@ Documentation=https://github.com/NomelLime/PreLend
 After=network.target
 
 [Service]
-# Замените 'prelend' на реального пользователя VPS
-User=prelend
-Group=prelend
+# Как у deploy.sh (DEPLOY_USER=www-data). Иначе смени User/Group под своего юзера.
+User=www-data
+Group=www-data
 WorkingDirectory=/var/www/prelend
 
-# Укажите реальный путь к venv и реальный ключ
+# Нужен venv с uvicorn: см. deploy.sh («Venv для Internal API») или:
+#   python3 -m venv /var/www/prelend/venv && /var/www/prelend/venv/bin/pip install -r internal_api/requirements.txt
+# Без файла venv/bin/uvicorn systemd даст status=203/EXEC.
 ExecStart=/var/www/prelend/venv/bin/uvicorn internal_api.main:app \
     --host 127.0.0.1 \
     --port 9090 \

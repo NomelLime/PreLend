@@ -206,3 +206,35 @@ sudo PRELEND_DOMAIN=твойдомен.tld bash deploy/deploy.sh
 - Если файла **нет** в `.gitignore` и он закоммичен — решай сам: либо продолжай коммитить как журнал проекта, либо добавь в `.gitignore` и перестань трекать (`git rm --cached status.md`).
 
 Инструкции для прод-сервера, которые должны жить в git, разумно держать в **`deploy/*.md`** (как этот файл), а не только в `status.md`.
+
+---
+
+## Internal API: `systemctl` показывает `status=203/EXEC`
+
+**203/EXEC** значит: systemd **не смог выполнить** команду из **`ExecStart`** (чаще всего **нет файла** `/var/www/prelend/venv/bin/uvicorn`).
+
+Проверка:
+
+```bash
+ls -la /var/www/prelend/venv/bin/uvicorn
+file /var/www/prelend/venv/bin/uvicorn
+```
+
+Если файла нет — создай venv и поставь зависимости Internal API:
+
+```bash
+cd /var/www/prelend
+sudo -u www-data python3 -m venv /var/www/prelend/venv
+sudo -u www-data /var/www/prelend/venv/bin/pip install --upgrade pip
+sudo -u www-data /var/www/prelend/venv/bin/pip install -r internal_api/requirements.txt
+```
+
+Убедись, что в **`/etc/systemd/system/prelend-internal-api.service`** **`User`/`Group`** совпадают с владельцем **`/var/www/prelend`** (часто **`www-data`**). После правок unit:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart prelend-internal-api
+sudo systemctl status prelend-internal-api --no-pager
+```
+
+Полный деплой из актуального **`deploy/deploy.sh`** сам создаёт **`venv`** и ставит **`internal_api/requirements.txt`**.

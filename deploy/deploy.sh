@@ -75,6 +75,16 @@ log "Устанавливаем Python зависимости..."
 pip3 install --break-system-packages -r "${WEBROOT}/requirements.txt" -q
 log "Python зависимости установлены"
 
+# Internal API (systemd ExecStart = venv/bin/uvicorn) — без venv будет status=203/EXEC
+log "Venv для Internal API: ${WEBROOT}/venv ..."
+if [[ ! -x "${WEBROOT}/venv/bin/python3" ]]; then
+    python3 -m venv "${WEBROOT}/venv"
+fi
+"${WEBROOT}/venv/bin/pip" install -q --upgrade pip
+"${WEBROOT}/venv/bin/pip" install -q -r "${WEBROOT}/internal_api/requirements.txt"
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${WEBROOT}/venv"
+log "venv готов (uvicorn: ${WEBROOT}/venv/bin/uvicorn)"
+
 # ── 6. .env файл ──────────────────────────────────────────────────────────────
 if [[ ! -f "${WEBROOT}/.env" ]]; then
     if [[ -f "${WEBROOT}/.env.example" ]]; then
