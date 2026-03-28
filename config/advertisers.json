@@ -15,8 +15,24 @@
     "cr_threshold_pct": 3.0,
     "cr_rotation_days": 3,
     "cr_rotation_enabled": false,
-    "hmac_secret": "***",
+    "hmac_secret": "asdf000",
     "allowed_ips": [],
     "max_postbacks_per_min": 120
+  },
+  {
+    "name": "Postback Test Stub",
+    "url": "https://pulsority.com/stub_advertiser.php",
+    "rate": 0.01,
+    "geo": [],
+    "device": [],
+    "time_from": "00:00",
+    "time_to": "23:59",
+    "template": "wellness_quiz",
+    "status": "active",
+    "backup_offer_id": null,
+    "hmac_secret": "TH4SiRHCIb2Oa7IWLQ3Y6NewUFnXKFR3r1C175LwG7j5b3nc",
+    "allowed_ips": [],
+    "max_postbacks_per_min": 120,
+    "id": "adv_645a48e9"
   }
 ]
