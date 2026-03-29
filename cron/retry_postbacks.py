@@ -94,7 +94,10 @@ def main() -> int:
                 continue
             kept.append(line)
 
-        RETRY_FILE.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
+        # [FIX] Атомарная перезапись: tmpfile → os.replace() предотвращает потерю данных при крэше
+        tmp_file = RETRY_FILE.with_suffix(".jsonl.tmp")
+        tmp_file.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
+        os.replace(tmp_file, RETRY_FILE)
 
         if len(kept) > 10 and tg_token and tg_chat:
             try:

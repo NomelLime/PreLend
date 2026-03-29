@@ -13,6 +13,7 @@ import logging
 import sqlite3
 import time
 from typing import Any, Dict, Optional
+from urllib.parse import quote as _url_quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -345,10 +346,11 @@ async def register_video(body: dict, _key: str = Depends(require_api_key)):
     utm_content = f"sp_{video_stem}_{platform}"
     settings = _safe_read_json(cfg.SETTINGS_JSON) or {}
     base_url = str(settings.get("default_offer_url") or "https://pulsority.com").rstrip("/")
+    # [FIX] URL-encode параметров: video_stem может содержать & или # → сломает URL
     tracking_url = (
-        f"{base_url}?utm_source={platform}"
+        f"{base_url}?utm_source={_url_quote(platform, safe='')}"
         f"&utm_medium=shorts"
-        f"&utm_content={utm_content}"
+        f"&utm_content={_url_quote(utm_content, safe='')}"
     )
 
     conn = _connect_clicks()

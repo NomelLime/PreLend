@@ -97,6 +97,94 @@ class ClickLogger
         $stmt->execute([$fpHash, $clickId, time()]);
     }
 
+    /**
+     * Атомарная проверка дедупликации + запись клика + fingerprint.
+     *
+     * [FIX] Race condition: без транзакции между isDuplicateFingerprint() и
+     * recordFingerprint() есть окно, в котором параллельный запрос создаст дубль.
+     * Теперь вся цепочка внутри IMMEDIATE-транзакции (SQLite serializes writes).
+     *
+     * @return array{click_id: string, ok: bool, is_duplicate: bool}
+     */
+    public function logWithDedup(
+        array  $context,
+        string $status,
+        string $ip,
+        string $uaHash,
+        int    $ttlSec = 60
+    ): array {
+        $fpHash = hash('sha256', $ip . $uaHash);
+        $since  = time() - $ttlSec;
+
+        try {
+            $this->db->exec('BEGIN IMMEDIATE');
+
+            // 1. Проверяем fingerprint внутри транзакции
+            $stmt = $this->db->prepare(
+                'SELECT click_id FROM click_fingerprints WHERE fp_hash = ? AND created_at >= ?'
+            );
+            $stmt->execute([$fpHash, $since]);
+            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $this->db->exec('COMMIT');
+                return [
+                    'click_id'     => (string) $existing['click_id'],
+                    'ok'           => true,
+                    'is_duplicate' => true,
+                ];
+            }
+
+            // 2. Записываем клик
+            $clickId = $this->generateUUID();
+            $insertStmt = $this->db->prepare("
+                INSERT INTO clicks (
+                    click_id, ts, ip, geo, device, platform, advertiser_id,
+                    utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+                    ua_hash, referer, is_test, status
+                ) VALUES (
+                    :click_id, :ts, :ip, :geo, :device, :platform, :advertiser_id,
+                    :utm_source, :utm_medium, :utm_campaign, :utm_content, :utm_term,
+                    :ua_hash, :referer, :is_test, :status
+                )
+            ");
+            $insertStmt->execute([
+                ':click_id'      => $clickId,
+                ':ts'            => $context['ts']            ?? time(),
+                ':ip'            => $context['ip']            ?? '',
+                ':geo'           => $context['geo']           ?? 'XX',
+                ':device'        => $context['device']        ?? 'unknown',
+                ':platform'      => $context['platform']      ?? 'direct',
+                ':advertiser_id' => $context['advertiser_id'] ?? null,
+                ':utm_source'    => $context['utm_source']    ?? null,
+                ':utm_medium'    => $context['utm_medium']    ?? null,
+                ':utm_campaign'  => $context['utm_campaign']  ?? null,
+                ':utm_content'   => $context['utm_content']   ?? null,
+                ':utm_term'      => $context['utm_term']      ?? null,
+                ':ua_hash'       => $context['ua_hash']       ?? null,
+                ':referer'       => $context['referer']       ?? null,
+                ':is_test'       => $context['is_test']       ?? 0,
+                ':status'        => $status,
+            ]);
+
+            // 3. Записываем fingerprint
+            $fpStmt = $this->db->prepare(
+                'INSERT OR REPLACE INTO click_fingerprints (fp_hash, click_id, created_at)
+                 VALUES (?, ?, ?)'
+            );
+            $fpStmt->execute([$fpHash, $clickId, time()]);
+
+            $this->db->exec('COMMIT');
+            return ['click_id' => $clickId, 'ok' => true, 'is_duplicate' => false];
+
+        } catch (Throwable $e) {
+            try { $this->db->exec('ROLLBACK'); } catch (Throwable $_) {}
+            error_log('[PreLend][ClickLogger] logWithDedup: ' . $e->getMessage());
+            // Fallback: генерируем click_id но без fingerprint (не потеряем клик)
+            return ['click_id' => $this->generateUUID(), 'ok' => false, 'is_duplicate' => false];
+        }
+    }
+
     // ── Вспомогательные методы ────────────────────────────────────────────
 
     /**

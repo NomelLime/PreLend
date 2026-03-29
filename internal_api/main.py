@@ -45,6 +45,26 @@ app.include_router(configs.router, tags=["configs"])
 app.include_router(agents.router,  tags=["agents"])
 
 
+@app.on_event("startup")
+def _startup_auth_check():
+    """[FIX] Блокируем запуск без API-ключа если не задан PL_ALLOW_NO_AUTH.
+
+    На VPS если .env потерялся — API открыт без аутентификации.
+    Теперь: без ключа запуск только при явном PL_ALLOW_NO_AUTH=1 (dev-режим).
+    """
+    import os
+    import sys
+    if not cfg.API_KEY:
+        if os.getenv("PL_ALLOW_NO_AUTH", "").lower() not in ("1", "true", "yes"):
+            log = logging.getLogger("internal_api")
+            log.critical(
+                "PL_INTERNAL_API_KEY не задан и PL_ALLOW_NO_AUTH не включён. "
+                "API без аутентификации на VPS — критический риск. "
+                "Задайте PL_INTERNAL_API_KEY в .env или установите PL_ALLOW_NO_AUTH=1 для dev."
+            )
+            sys.exit(1)
+
+
 def _connect_clicks():
     """Открывает clicks.db только на чтение. Возвращает Connection или None."""
     if not cfg.CLICKS_DB.exists():

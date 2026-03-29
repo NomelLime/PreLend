@@ -15,6 +15,12 @@ class Router
     private array  $settings;
     private PDO    $db;
 
+    /** @var array<string, array> Кэш landing_status (preloaded) */
+    private array $statusCache = [];
+    /** @var array<string, float> Кэш shave_cache (preloaded) */
+    private array $shaveCacheMap = [];
+    private bool  $cacheLoaded = false;
+
     public function __construct(array $advertisers, array $settings, PDO $db)
     {
         $this->advertisers = $advertisers;
@@ -34,6 +40,10 @@ class Router
      */
     public function resolve(string $geo, string $device, BotFilter $filter): ?array
     {
+        // [FIX] Preload: 2 SQL-запроса вместо O(N*3).
+        // При 10 рекламодателях: было ~30 запросов → стало 2.
+        $this->preloadCaches();
+
         $candidates = $this->filterCandidates($geo, $device, $filter);
 
         if (empty($candidates)) {
@@ -70,6 +80,40 @@ class Router
     }
 
     // ── Приватные методы ──────────────────────────────────────────────────
+
+    /**
+     * [FIX] Предзагрузка landing_status и shave_cache одним batch.
+     * Вызывается один раз в начале resolve().
+     */
+    private function preloadCaches(): void
+    {
+        if ($this->cacheLoaded) {
+            return;
+        }
+        $this->cacheLoaded = true;
+
+        try {
+            $stmt = $this->db->query(
+                'SELECT advertiser_id, is_up, uptime_24h FROM landing_status'
+            );
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $this->statusCache[$row['advertiser_id']] = $row;
+            }
+        } catch (Throwable $e) {
+            error_log('[PreLend][Router] preload landing_status: ' . $e->getMessage());
+        }
+
+        try {
+            $stmt = $this->db->query(
+                'SELECT advertiser_id, shave_coef FROM shave_cache'
+            );
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $this->shaveCacheMap[$row['advertiser_id']] = (float) $row['shave_coef'];
+            }
+        } catch (Throwable $e) {
+            error_log('[PreLend][Router] preload shave_cache: ' . $e->getMessage());
+        }
+    }
 
     private function filterCandidates(string $geo, string $device, BotFilter $filter): array
     {
@@ -154,6 +198,12 @@ class Router
 
     private function getLandingStatus(string $advId): array
     {
+        // [FIX] Используем preloaded кэш вместо SQL-запроса на каждого кандидата
+        if (isset($this->statusCache[$advId])) {
+            return $this->statusCache[$advId];
+        }
+
+        // Fallback: единичный запрос если кэш не загружен (вызов getScore() напрямую)
         try {
             $stmt = $this->db->prepare(
                 'SELECT is_up, uptime_24h FROM landing_status WHERE advertiser_id = ? LIMIT 1'
@@ -172,6 +222,12 @@ class Router
      */
     private function getShaveCoef(string $advId): float
     {
+        // [FIX] Используем preloaded кэш вместо SQL-запроса на каждого кандидата
+        if (isset($this->shaveCacheMap[$advId])) {
+            return $this->shaveCacheMap[$advId];
+        }
+
+        // Fallback: единичный запрос если кэш не загружен
         try {
             $stmt = $this->db->prepare(
                 'SELECT shave_coef FROM shave_cache WHERE advertiser_id = ? LIMIT 1'

@@ -436,3 +436,15 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Перезапуск после правок Internal API:** `sudo systemctl restart prelend-internal-api`.
 
 **Связка с ContentHub:** см. `ContentHub/status.md` — сессия 11 (28.03.2026): превью + CORS + `write_pl_settings` / **502** с текстом ошибки, опция **`CONTENTHUB_PL_SETTINGS_TRUST_LOCAL_FALLBACK`**.
+
+### Сессия 23 (29.03.2026) — Code Review: Security & Performance Fixes
+
+| Область | Изменение |
+|---------|-----------|
+| **`src/ClickLogger.php`** | **[HIGH]** Новый метод `logWithDedup()` — атомарная дедупликация: check + INSERT + fingerprint в `BEGIN IMMEDIATE` транзакции. Устраняет race condition при concurrent запросах с одинаковым IP+UA. |
+| **`public/index.php`** | Переведён на `logWithDedup()` вместо раздельных `isDuplicateFingerprint()` → `log()` → `recordFingerprint()`. Уменьшен объём кода PASS-ветки. |
+| **`src/Router.php`** | **[MEDIUM]** `preloadCaches()` — предзагрузка `landing_status` и `shave_cache` двумя SQL-запросами в начале `resolve()`. Было O(N×3) запросов на клик → стало O(2). `getLandingStatus()` и `getShaveCoef()` используют in-memory кэш с fallback на единичный запрос. |
+| **`cron/retry_postbacks.py`** | **[MEDIUM]** Атомарная перезапись retry-файла через `tmpfile → os.replace()`. Предотвращает потерю pending postbacks при крэше процесса. |
+| **`internal_api/routes/metrics.py`** | **[MEDIUM]** `register_video`: UTM-параметры (`platform`, `utm_content`) через `urllib.parse.quote()`. Предотвращает поломку URL если `video_stem` содержит `&` или `#`. |
+
+**Контекст:** Полный code review всех 5 проектов экосистемы с фокусом на безопасность, производительность и архитектуру. Найдено 1 Critical (в Orchestrator), 3 High, 7 Medium. Все исправлены.

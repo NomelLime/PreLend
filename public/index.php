@@ -92,40 +92,34 @@ switch ($filterResult) {
         // Определяем is_test по параметру ?test=1
         $isTest = isset($_GET['test']) && $_GET['test'] === '1';
 
-        $ip              = GeoDetector::getRealIp();
-        $uaHash          = $filter->getUaHash();
-        $existingClickId = $logger->isDuplicateFingerprint($ip, $uaHash, 60);
+        $ip     = GeoDetector::getRealIp();
+        $uaHash = $filter->getUaHash();
 
-        if ($existingClickId !== null) {
-            $clickId = $existingClickId;
-            if ($adv !== null) {
+        // [FIX] Атомарная дедупликация: check + insert + fingerprint в одной транзакции.
+        // Устраняет race condition при concurrent запросах с одинаковым IP+UA.
+        if ($adv !== null) {
+            $ctx    = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
+            $result = $logger->logWithDedup($ctx, 'sent', $ip, $uaHash, 60);
+            $clickId = $result['click_id'];
+
+            if ($result['is_duplicate']) {
+                // Повторный визит — используем существующий click_id
                 $url      = SubIdBuilder::build($adv, $clickId);
                 $template = $adv['template'] ?? 'expert_review';
-            } else {
-                $url      = SubIdBuilder::buildDefault($defaultOfferUrl);
-                $template = 'expert_review';
-            }
-        } elseif ($adv !== null) {
-            $ctx     = ClickLogger::buildContext($geo, $filter, $adv, $isTest);
-            $result  = $logger->log($ctx, 'sent');
-            $clickId = $result['click_id'];
-            if (!$result['ok']) {
+            } elseif (!$result['ok']) {
                 error_log('[PreLend] INSERT click failed — redirect без SubID');
-                $url = $adv['url'] ?? $defaultOfferUrl;
+                $url      = $adv['url'] ?? $defaultOfferUrl;
+                $template = $adv['template'] ?? 'expert_review';
             } else {
-                $url = SubIdBuilder::build($adv, $clickId);
-                $logger->recordFingerprint($ip, $uaHash, $clickId);
+                $url      = SubIdBuilder::build($adv, $clickId);
+                $template = $adv['template'] ?? 'expert_review';
             }
-            $template = $adv['template'] ?? 'expert_review';
         } else {
-            $ctx     = ClickLogger::buildContext($geo, $filter, null, $isTest);
-            $result  = $logger->log($ctx, 'sent');
+            $ctx    = ClickLogger::buildContext($geo, $filter, null, $isTest);
+            $result = $logger->logWithDedup($ctx, 'sent', $ip, $uaHash, 60);
             $clickId = $result['click_id'];
             $url     = SubIdBuilder::buildDefault($defaultOfferUrl);
             $template = 'expert_review';
-            if ($result['ok']) {
-                $logger->recordFingerprint($ip, $uaHash, $clickId);
-            }
         }
 
         // A/B split-тест: проверяем есть ли активный тест для этого ГЕО
@@ -171,11 +165,20 @@ function resolveCloakTemplate(array $advertisers, GeoDetector $geo): string
 
 /**
  * Мгновенный редирект (боты, VPN, Tor).
+ *
+ * [FIX] Валидация схемы URL — только http/https. Предотвращает javascript:, data:, vbscript:
+ * редиректы если default_offer_url будет изменён через config write на произвольное значение.
  */
 function redirectInstant(string $url): void
 {
     if ($url === '') {
         http_response_code(404);
+        exit;
+    }
+    $scheme = parse_url($url, PHP_URL_SCHEME);
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        error_log('[PreLend] redirectInstant: invalid scheme: ' . ($scheme ?? 'null') . ' in URL');
+        http_response_code(400);
         exit;
     }
     header('Location: ' . $url, true, 302);
