@@ -20,8 +20,10 @@ ExecStart=/var/www/prelend/venv/bin/uvicorn internal_api.main:app \
 Restart=always
 RestartSec=5
 
-# Env-переменные: задайте здесь или через EnvironmentFile=
-Environment=PL_INTERNAL_API_KEY=REPLACE_WITH_REAL_KEY
+# SOPS: переменные из расшифровки (deploy.sh с PRELEND_USE_SOPS=1). Файл опционален для ручного запуска без SOPS.
+EnvironmentFile=-/run/prelend.env
+# Дополнительно без SOPS: раскомментируй и задай ключ
+# Environment=PL_INTERNAL_API_KEY=...
 # Environment=PL_INTERNAL_HOST=127.0.0.1
 # Environment=PL_INTERNAL_PORT=9090
 # Environment=PL_GIT_AUTOCOMMIT=true

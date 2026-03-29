@@ -25,6 +25,11 @@ if [[ "${EUID:-0}" -ne 0 ]]; then
   die "Запусти с sudo: sudo bash deploy/reload_services.sh"
 fi
 
+if [[ -f /etc/systemd/system/prelend-decrypt-env.service ]]; then
+  log "prelend-decrypt-env (SOPS)..."
+  systemctl start prelend-decrypt-env.service || warn "расшифровка SOPS не удалась — проверь ключ и secrets.enc.env"
+fi
+
 log "nginx reload..."
 nginx -t && systemctl reload nginx
 
