@@ -35,7 +35,7 @@ PreLend/
 │   ├── Router.php             # Score-based выбор рекламодателя (+ кеш shave CR на запрос)
 │   ├── Config.php             # Кеш-загрузчик JSON-конфигов
 │   ├── DB.php                 # SQLite PDO singleton
-│   ├── GeoAdapter.php         # Гео-адаптивный контекст для шаблонов
+│   ├── GeoAdapter.php         # CF + MaxMind resolveGeo(); локаль оффера — ContentLocaleResolver
 │   ├── SplitTester.php        # A/B Байесовский split-тест шаблонов
 │   ├── TemplateRenderer.php   # Рендер PHP-шаблонов (offer/cloaked)
 │   ├── ConversionLogger.php   # Запись конверсий в таблицу conversions
@@ -448,3 +448,16 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 | **`internal_api/routes/metrics.py`** | **[MEDIUM]** `register_video`: UTM-параметры (`platform`, `utm_content`) через `urllib.parse.quote()`. Предотвращает поломку URL если `video_stem` содержит `&` или `#`. |
 
 **Контекст:** Полный code review всех 5 проектов экосистемы с фокусом на безопасность, производительность и архитектуру. Найдено 1 Critical (в Orchestrator), 3 High, 7 Medium. Все исправлены.
+
+### Сессия 24 (29.03.2026) — Прод pulsority: nginx/Certbot, фикс 500, stub, UI offers
+
+| Область | Изменение |
+|---------|-----------|
+| **Nginx / Certbot** | Дублирующие `server {}` с `return 404; # managed by Certbot` и конфликтующие блоки на **:80** / **:443** давали **404** по `/` или лишний fallback. Решение: один полноценный **443** с `root` + PHP; на **:80** — редирект `301 https://$host$request_uri` (не удалять блок целиком). Логи смотреть **`/var/log/nginx/prelend_*.log`**, не только дефолтные `access.log` / `error.log`. |
+| **`src/TemplateRenderer.php`** | Удалены вызовы несуществующего **`GeoAdapter::context()`** → устранён **PHP Fatal** и **500** для браузерного трафика (curl без «браузерного» UA давал **200 + `ok`** из ветки `PROBE`, маскируя проблему). Локаль оффера по-прежнему из **`ContentLocaleResolver`** в `index.php`. |
+| **`public/stub_advertiser.php`** | На публичной заглушке **`adv_stub`** добавлена кликабельная почта **`mailto:YourAdvPa@proton.me`**. |
+| **`templates/offers/*.php`** (все 11) | Визуальный апгрейд: тематические фоны (градиенты, сетки, «поле»/«эфир»), карточки с глубиной и акцентными цветами по вертикали (gambling / betting / finance / wellness / tech / sports / expert), единая полоса прогресса редиректа + таймер. Ключи **`$t()`** и логика редиректа не менялись. |
+
+**Диагностика на VPS:** `curl -sI -A "Mozilla/5.0 ... Chrome/..." https://127.0.0.1/ -H "Host: pulsority.com" --insecure` → ожидается не **500**. В **`prelend_error.log`** строки **«Primary script unknown»** для `/wp-admin/...`, `xmlrpc.php` — сканеры WordPress, не корневая причина падения лендинга.
+
+**После `git pull` на VPS:** обновить только PHP-файлы → `systemctl reload php8.3-fpm` (пул **`[prelend]`**). Nginx перезапускать только если правили vhost.
