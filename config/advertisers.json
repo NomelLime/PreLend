@@ -28,7 +28,7 @@
     "time_from": "00:00",
     "time_to": "23:59",
     "template": "wellness_quiz",
-    "status": "active",
+    "status": "deleted",
     "backup_offer_id": null,
     "hmac_secret": "TH4SiRHCIb2Oa7IWLQ3Y6NewUFnXKFR3r1C175LwG7j5b3nc",
     "allowed_ips": [],
