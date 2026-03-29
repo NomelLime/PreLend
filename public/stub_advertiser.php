@@ -188,6 +188,18 @@ if ($debugMode) {
             font-size: 1.05rem;
             color: #64748b;
         }
+        .placeholder .contact-email {
+            margin-top: 1.25rem;
+        }
+        .placeholder .contact-email a {
+            color: #2563eb;
+            font-weight: 500;
+            text-decoration: underline;
+            text-underline-offset: 0.15em;
+        }
+        .placeholder .contact-email a:hover {
+            color: #1d4ed8;
+        }
         /* —— Режим отладки —— */
         .debug-wrap { max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
         .debug-wrap h1 { font-size: 1.35rem; }
@@ -215,6 +227,9 @@ if ($debugMode) {
         <div class="placeholder-card">
             <h1>Your ad could be here.</h1>
             <p>Thank you for visiting.</p>
+            <p class="contact-email">
+                <a href="mailto:YourAdvPa@proton.me">YourAdvPa@proton.me</a>
+            </p>
         </div>
     </main>
 <?php else : ?>
