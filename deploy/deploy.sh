@@ -367,8 +367,23 @@ chmod 644 "${CRON_FILE}"
 log "Cron задачи установлены: ${CRON_FILE}"
 
 # ── 10. Права доступа ──────────────────────────────────────────────────────────
+# Скрипт запускается от root: chown доступен. Важно: не делать «chown -R root:www-data
+# на весь WEBROOT» — это затирает владельца на config/data/logs и ломает запись www-data.
 log "Выставляем права доступа..."
-chown -R root:"${DEPLOY_USER}" "${WEBROOT}"
+chown root:"${DEPLOY_USER}" "${WEBROOT}"
+shopt -s nullglob
+for item in "${WEBROOT}"/*; do
+    base=$(basename "${item}")
+    case "${base}" in
+        config|data|logs)
+            # Запись от www-data: Internal API (config/), SQLite и логи (data/, logs/)
+            ;;
+        *)
+            chown -R root:"${DEPLOY_USER}" "${item}"
+            ;;
+    esac
+done
+shopt -u nullglob
 # Не chmod 640 на venv/bin/* — снимется +x с uvicorn/python → systemd 203/EXEC.
 find "${WEBROOT}" -type f ! -path "${WEBROOT}/venv/*" -exec chmod 640 {} \;
 find "${WEBROOT}" -type d -exec chmod 750 {} \;
@@ -381,9 +396,10 @@ chmod 755 "${WEBROOT}/public"
 chmod 644 "${WEBROOT}/public"/*.php
 # Скрипты мониторинга должны запускаться
 chmod 750 "${WEBROOT}/monitor"/*.py "${WEBROOT}/agents"/*.py 2>/dev/null || true
-# Данные и логи — доступ для www-data
-chmod 775 "${WEBROOT}/data" "${WEBROOT}/logs"
-chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${WEBROOT}/data" "${WEBROOT}/logs"
+# config/, data/, logs/ — владелец www-data (запись: Internal API, БД, cron)
+chmod 775 "${WEBROOT}/data" "${WEBROOT}/logs" "${WEBROOT}/config"
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${WEBROOT}/data" "${WEBROOT}/logs" "${WEBROOT}/config"
+find "${WEBROOT}/config" -type f -exec chmod 664 {} \;
 
 # ── 11. SSL (Certbot) ─────────────────────────────────────────────────────────
 if [[ "${DOMAIN}" != "yourdomain.me" ]]; then

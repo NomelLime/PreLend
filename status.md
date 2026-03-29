@@ -131,6 +131,45 @@ PreLend/
 
 ---
 
+## ОБЯЗАТЕЛЬНО: права на каталог `config/` (Internal API, PUT /config/*)
+
+**Зачем:** сервис **`prelend-internal-api`** в systemd работает от **`User=www-data`** (`deploy/prelend-internal-api.service`). Запись конфигов идёт через **`internal_api/routes/configs.py`** → **`_atomic_write_json()`**: в **`config/`** создаётся временный файл (**`tmpXXXXXX.tmp`**), затем **`os.replace()`** на целевой JSON (`advertisers.json`, `settings.json` и т.д.). Без права **записи в каталог** и на файлы процесс **не сможет** завершить PUT.
+
+**Симптом в ContentHub / curl (HTTP 500):**
+```text
+Ошибка записи конфига: [Errno 13] Permission denied: '/var/www/prelend/config/tmpXXXXXX.tmp'
+```
+**Не путать с 403:** при неверном **`PL_INTERNAL_API_KEY`** ответ будет **`Invalid or missing API key`**, а не `Permission denied` на `tmp`.
+
+**Почему повторяется:** в старых прогонах **`deploy.sh`** на дерево ставились **`chmod 750`** на каталоги и владелец **`root:www-data`** — у группы **нет записи** в каталог. Любой **`git pull`** / правка конфигов от **root** снова даёт **`root:root`** на файлы — **`www-data`** не пишет.
+
+### Разовое исправление на VPS (после инцидента)
+
+```bash
+sudo chown -R www-data:www-data /var/www/prelend/config
+sudo chmod 775 /var/www/prelend/config
+sudo find /var/www/prelend/config -type f -exec chmod 664 {} \;
+sudo systemctl restart prelend-internal-api
+```
+
+**Проверка, что PUT реально работает:**
+```bash
+KEY="ваш_PL_INTERNAL_API_KEY"
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X PUT -H "Content-Type: application/json" -H "X-API-Key: $KEY" \
+  --data-binary @/var/www/prelend/config/advertisers.json \
+  "http://127.0.0.1:9090/config/advertisers?source=permission-smoke"
+# Ожидается: 200
+```
+
+### Как не ловить это в будущем
+
+1. **Деплой из репозитория:** в актуальном **`deploy/deploy.sh`** (шаг **«10. Права доступа»**) для **`${WEBROOT}/config`** выставляются **`chmod 775`**, **`chown -R www-data:www-data`**, файлам внутри **`664`** — так же по смыслу, как для **`data/`** и **`logs/`**. После **`git pull`** на VPS при полном прогоне **`deploy.sh`** права на **`config/`** восстанавливаются.
+2. **Только обновили файлы с хоста:** если делали **`git pull`** или **`scp`** конфигов под **root**, после этого снова выполните блок **`chown`/`chmod`** выше (или перезапустите соответствующий шаг из **`deploy.sh`**).
+3. **Чеклист после каждого деплоя PreLend:** см. также **`deploy/UPGRADE_AFTER_GIT_PULL.md`**; при изменениях только в PHP/nginx — Internal API можно не трогать, но если трогали **`config/`** с диска от root — **права проверить обязательно**.
+
+---
+
 ## ENV ПЕРЕМЕННЫЕ (VPS)
 ```env
 PL_INTERNAL_API_KEY=your-secret-key   # Обязательно в продакшне
@@ -461,3 +500,13 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 **Диагностика на VPS:** `curl -sI -A "Mozilla/5.0 ... Chrome/..." https://127.0.0.1/ -H "Host: pulsority.com" --insecure` → ожидается не **500**. В **`prelend_error.log`** строки **«Primary script unknown»** для `/wp-admin/...`, `xmlrpc.php` — сканеры WordPress, не корневая причина падения лендинга.
 
 **После `git pull` на VPS:** обновить только PHP-файлы → `systemctl reload php8.3-fpm` (пул **`[prelend]`**). Nginx перезапускать только если правили vhost.
+
+### Сессия 25 (29.03.2026) — Internal API: Permission denied на `config/*.tmp` (ContentHub PUT advertisers)
+
+| Область | Изменение / факт |
+|---------|------------------|
+| **Инцидент** | ContentHub → **`PUT /config/advertisers`** → **HTTP 500**, текст **`[Errno 13] Permission denied`** на **`/var/www/prelend/config/tmp….tmp`**. Туннель **:9090** и **`/health`** при этом могут быть **OK** (ключ не при чём). |
+| **Причина** | Процесс **`prelend-internal-api`** (**`www-data`**) не может создать временный файл в **`config/`**: каталог **`750`** / владелец **root** без записи для **`www-data`**. |
+| **`deploy/deploy.sh`** | В шаг **«10. Права доступа»** добавлены **`chown`/`chmod`** для **`config/`** (аналогично **`data/`**, **`logs/`**), чтобы новые деплои не оставляли каталог без права записи. |
+| **Операции на VPS** | Разовый **`chown www-data:www-data`**, **`chmod 775`** на каталог, **`664`** на файлы → **`systemctl restart prelend-internal-api`**. Детали и smoke **curl PUT** — в разделе выше **«ОБЯЗАТЕЛЬНО: права на каталог config/»**. |
+| **ContentHub** | В ответах об ошибке PUT пробрасывается тело API (**`last_put_error`**); в **`ContentHub/status.md`** добавлена отсылка к этому разделу. |
