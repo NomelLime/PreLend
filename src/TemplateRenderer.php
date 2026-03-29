@@ -59,10 +59,7 @@ class TemplateRenderer
         $vars['target_url'] = $targetUrl;
         $vars['delay_ms']   = max(500, $delayMs);
         $vars['delay_sec']  = (int) ceil($delayMs / 1000);
-        if ($geo !== '') {
-            $geoCtx = GeoAdapter::context($geo);
-            $vars   = array_merge($geoCtx, $vars);
-        }
+        // content_locale / locale_lang уже приходят в $vars из ContentLocaleResolver (index.php).
         if (!isset($vars['i18n']) || !is_array($vars['i18n'])) {
             $vars['i18n'] = TemplateI18n::forTemplate($template, [
                 'content_locale' => $vars['content_locale'] ?? 'en-US',
@@ -77,11 +74,7 @@ class TemplateRenderer
      */
     public static function renderCloakedGeo(string $template, string $geo, array $vars = []): void
     {
-        if ($geo !== '') {
-            $geoCtx = GeoAdapter::context($geo);
-            $vars   = array_merge($geoCtx, $vars);
-        }
-        // Клоака: текст всегда на английском; GEO остаётся для валюты/города в данных.
+        // Клоака: текст всегда на английском.
         $vars['content_locale'] = 'en-US';
         $vars['locale_lang']    = 'en';
         $vars['resolve_source'] = 'cloak';
