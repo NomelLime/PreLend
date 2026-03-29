@@ -369,8 +369,13 @@ log "Cron задачи установлены: ${CRON_FILE}"
 # ── 10. Права доступа ──────────────────────────────────────────────────────────
 log "Выставляем права доступа..."
 chown -R root:"${DEPLOY_USER}" "${WEBROOT}"
-find "${WEBROOT}" -type f -exec chmod 640 {} \;
+# Не chmod 640 на venv/bin/* — снимется +x с uvicorn/python → systemd 203/EXEC.
+find "${WEBROOT}" -type f ! -path "${WEBROOT}/venv/*" -exec chmod 640 {} \;
 find "${WEBROOT}" -type d -exec chmod 750 {} \;
+if [[ -d "${WEBROOT}/venv" ]]; then
+    find "${WEBROOT}/venv" -type f -exec chmod 644 {} \;
+    find "${WEBROOT}/venv/bin" -type f -exec chmod 750 {} \;
+fi
 # public/ должен читаться nginx
 chmod 755 "${WEBROOT}/public"
 chmod 644 "${WEBROOT}/public"/*.php
