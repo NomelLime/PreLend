@@ -21,22 +21,67 @@ $delaySec = (int) ceil($delay / 1000);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
 <title><?= $t('page_title') ?></title>
 <style>
+:root{--cyan:#22d3ee;--violet:#818cf8}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b0c11;color:#f3f5ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{max-width:560px;width:100%;background:#131722;border:1px solid #2a3147;border-radius:16px;padding:26px}
-.label{display:inline-block;font-size:.72rem;background:#1c2340;color:#9db0ff;border:1px solid #313e73;padding:5px 10px;border-radius:999px;margin-bottom:12px}
-h1{font-size:1.6rem;line-height:1.2;margin-bottom:10px}
-p{color:#b5bdd7;line-height:1.55;font-size:.95rem;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
-.item{background:#191e2f;border:1px solid #2b3555;border-radius:10px;padding:10px}
-.item b{display:block;font-size:.95rem}
-.item span{font-size:.78rem;color:#9ca7c8}
-.btn{display:block;text-align:center;background:linear-gradient(90deg,#6366f1,#4f46e5);color:#fff;text-decoration:none;font-weight:700;padding:13px;border-radius:10px;margin-top:6px}
-.meta{text-align:center;color:#97a4cc;font-size:.8rem;margin-top:10px}
-.meta span{color:#c7d2ff;font-weight:700}
+body{
+  font-family:ui-monospace,'Cascadia Code','SF Mono',Consolas,system-ui,sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  color:#e2e8f0;background:#030712;
+  background-image:
+    linear-gradient(rgba(34,211,238,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(34,211,238,.04) 1px,transparent 1px);
+  background-size:32px 32px;
+  background-position:center top;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(129,140,248,.12),transparent 55%);
+  pointer-events:none;
+}
+.card{
+  position:relative;z-index:1;max-width:560px;width:100%;
+  background:linear-gradient(175deg,rgba(17,24,39,.92),rgba(3,7,18,.96));
+  border:1px solid rgba(129,140,248,.25);
+  border-radius:16px;padding:28px 26px;
+  box-shadow:0 0 0 1px rgba(34,211,238,.08),0 28px 56px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.label{
+  display:inline-block;font-size:.68rem;background:rgba(34,211,238,.12);
+  color:#67e8f9;border:1px solid rgba(34,211,238,.35);
+  padding:6px 11px;border-radius:6px;font-weight:700;letter-spacing:.08em;
+  margin-bottom:14px;font-family:ui-sans-serif,sans-serif;
+}
+h1{
+  font-family:ui-sans-serif,system-ui,sans-serif;
+  font-size:clamp(1.45rem,4vw,1.65rem);line-height:1.2;margin-bottom:10px;font-weight:800;
+  background:linear-gradient(90deg,#e2e8f0,#a5b4fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+p{color:#94a3b8;line-height:1.55;font-size:.93rem;margin-bottom:16px;font-family:ui-sans-serif,sans-serif}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0}
+.item{
+  background:rgba(15,23,42,.8);border:1px solid rgba(100,116,139,.35);
+  border-radius:12px;padding:14px 12px;
+  transition:border-color .15s,transform .15s;
+}
+.item:hover{border-color:rgba(34,211,238,.4);transform:translateY(-2px)}
+.item b{display:block;font-size:.95rem;color:#f1f5f9;font-family:ui-sans-serif,sans-serif}
+.item span{font-size:.76rem;color:#64748b}
+.btn{
+  display:block;text-align:center;font-family:ui-sans-serif,sans-serif;
+  background:linear-gradient(135deg,#6366f1,#4f46e5);
+  color:#fff;text-decoration:none;font-weight:800;padding:15px;border-radius:12px;margin-top:8px;
+  box-shadow:0 10px 28px rgba(99,102,241,.4);
+  transition:transform .15s;
+}
+.btn:hover{transform:translateY(-2px)}
+.meta{text-align:center;color:#64748b;font-size:.82rem;margin-top:14px;font-family:ui-sans-serif,sans-serif}
+.meta span{color:#a5b4fc;font-weight:800}
+.pb{height:3px;background:rgba(51,65,85,.6);border-radius:3px;margin-top:12px;overflow:hidden}
+.pf{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width linear}
 </style>
 </head>
 <body>
@@ -52,6 +97,7 @@ p{color:#b5bdd7;line-height:1.55;font-size:.95rem;margin-bottom:14px}
     </div>
     <a href="<?= $safeUrl ?>" id="open" class="btn"><?= $t('cta') ?></a>
     <div class="meta"><?= $t('meta_redirect') ?> <span id="clock"><?= $delaySec ?></span>s</div>
+    <div class="pb"><div class="pf" id="pf"></div></div>
   </div>
 <script>
 (function(){
@@ -59,6 +105,9 @@ p{color:#b5bdd7;line-height:1.55;font-size:.95rem;margin-bottom:14px}
   var url = "<?= $jsUrl ?>";
   var started = Date.now();
   var clock = document.getElementById('clock');
+  var pf = document.getElementById('pf');
+  pf.style.transitionDuration = delay + 'ms';
+  requestAnimationFrame(function(){ pf.style.width = '100%'; });
   var t = setInterval(function(){
     var left = Math.max(0, Math.ceil((delay - (Date.now() - started))/1000));
     if(clock) clock.textContent = left;

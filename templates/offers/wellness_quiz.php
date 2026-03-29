@@ -21,20 +21,59 @@ $delaySec = (int) ceil($delay / 1000);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
 <meta http-equiv="refresh" content="<?= $delaySec ?>;url=<?= $safeUrl ?>">
 <title><?= $t('page_title') ?></title>
 <style>
+:root{--leaf:#16a34a;--mint:#ecfdf5;--paper:#fff}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4fbf7;color:#173223;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.box{max-width:520px;background:#fff;border:1px solid #d7efe2;border-radius:16px;padding:28px;box-shadow:0 12px 28px rgba(18,76,48,.12)}
-.pill{display:inline-block;background:#e8f8ef;color:#1f8a57;padding:6px 12px;border-radius:999px;font-size:.75rem;font-weight:700;margin-bottom:12px}
-h1{font-size:1.5rem;line-height:1.25;color:#103020;margin-bottom:10px}
-p{font-size:.95rem;line-height:1.55;color:#406050;margin-bottom:16px}
-ul{margin:0 0 16px 18px;color:#345648}
-li{margin:6px 0}
-.cta{display:block;text-align:center;text-decoration:none;background:#1f8a57;color:#fff;font-weight:700;padding:13px;border-radius:10px}
-.foot{margin-top:12px;text-align:center;font-size:.8rem;color:#5a7a68}
-.foot span{font-weight:700;color:#1f8a57}
+body{
+  font-family:ui-sans-serif,system-ui,sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  color:#14532d;
+  background:#f0fdf4;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 20%,rgba(187,247,208,.8),transparent 50%),
+    radial-gradient(ellipse 60% 50% at 90% 80%,rgba(167,243,208,.6),transparent 45%);
+}
+.box{
+  max-width:520px;width:100%;
+  background:var(--paper);
+  border:1px solid rgba(22,163,74,.2);
+  border-radius:28px;padding:36px 32px;
+  box-shadow:0 4px 0 rgba(22,163,74,.06),0 24px 48px rgba(20,83,45,.1);
+}
+.pill{
+  display:inline-block;background:linear-gradient(90deg,#dcfce7,#bbf7d0);
+  color:#166534;padding:8px 14px;border-radius:999px;
+  font-size:.74rem;font-weight:800;letter-spacing:.04em;margin-bottom:16px;
+  border:1px solid rgba(34,197,94,.25);
+}
+h1{font-size:clamp(1.45rem,4vw,1.7rem);line-height:1.2;color:#14532d;margin-bottom:12px;font-weight:800}
+p{font-size:.96rem;line-height:1.6;color:#3f6212;margin-bottom:18px}
+ul{list-style:none;margin:0 0 22px;padding:0}
+li{
+  position:relative;padding:12px 14px 12px 44px;margin-bottom:10px;
+  background:#f7fee7;border:1px solid rgba(132,204,22,.35);
+  border-radius:14px;color:#365314;font-size:.92rem;
+}
+li::before{
+  content:'✓';position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  width:24px;height:24px;display:grid;place-items:center;
+  background:#22c55e;color:#fff;font-size:.75rem;font-weight:800;border-radius:8px;
+}
+.cta{
+  display:block;text-align:center;text-decoration:none;
+  background:linear-gradient(135deg,#22c55e,#16a34a);
+  color:#fff;font-weight:800;padding:16px;border-radius:14px;
+  box-shadow:0 10px 28px rgba(22,163,74,.35);
+  transition:transform .15s;
+}
+.cta:hover{transform:translateY(-2px)}
+.foot{margin-top:16px;text-align:center;font-size:.82rem;color:#65a30d}
+.foot span{font-weight:800;color:var(--leaf)}
+.pb{height:4px;background:rgba(22,163,74,.15);border-radius:4px;margin-top:14px;overflow:hidden}
+.pf{height:100%;width:0%;background:linear-gradient(90deg,#4ade80,#22c55e);transition:width linear}
 </style>
 </head>
 <body>
@@ -49,6 +88,7 @@ li{margin:6px 0}
     </ul>
     <a href="<?= $safeUrl ?>" class="cta" id="cta"><?= $t('cta') ?></a>
     <div class="foot"><?= $t('foot_redirect') ?> <span id="count"><?= $delaySec ?></span>s</div>
+    <div class="pb"><div class="pf" id="pf"></div></div>
   </div>
 <script>
 (function(){
@@ -56,6 +96,9 @@ li{margin:6px 0}
   var url = "<?= $jsUrl ?>";
   var start = Date.now();
   var el = document.getElementById('count');
+  var pf = document.getElementById('pf');
+  pf.style.transitionDuration = delay + 'ms';
+  requestAnimationFrame(function(){ pf.style.width = '100%'; });
   var timer = setInterval(function(){
     var left = Math.max(0, Math.ceil((delay - (Date.now() - start))/1000));
     if(el) el.textContent = left;
