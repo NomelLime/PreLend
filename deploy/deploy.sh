@@ -120,9 +120,12 @@ pip3 install --break-system-packages -r "${WEBROOT}/requirements.txt" -q
 log "Python зависимости установлены"
 
 # ── 5a. PHP зависимости (Composer) ────────────────────────────────────────────
-log "Устанавливаем PHP зависимости (MaxMind/IP2Location)..."
-if [[ ! -f "${WEBROOT}/composer.json" ]]; then
-    cat > "${WEBROOT}/composer.json" <<'JSON'
+if [[ "${PRELEND_SKIP_COMPOSER:-0}" == "1" ]]; then
+    warn "PRELEND_SKIP_COMPOSER=1 — пропускаем Composer (Geo fallback по PHP-пакетам может быть ограничен)"
+else
+    log "Устанавливаем PHP зависимости (MaxMind/IP2Location)..."
+    if [[ ! -f "${WEBROOT}/composer.json" ]]; then
+        cat > "${WEBROOT}/composer.json" <<'JSON'
 {
   "require": {
     "maxmind-db/reader": "^1.12",
@@ -130,9 +133,30 @@ if [[ ! -f "${WEBROOT}/composer.json" ]]; then
   }
 }
 JSON
+    fi
+
+    export COMPOSER_ALLOW_SUPERUSER=1
+    export COMPOSER_PROCESS_TIMEOUT="${COMPOSER_PROCESS_TIMEOUT:-2000}"
+    export COMPOSER_IPRESOLVE="${COMPOSER_IPRESOLVE:-4}"
+
+    _composer_ok=0
+    for _try in 1 2 3; do
+        if composer -d "${WEBROOT}" install --no-interaction --prefer-dist --no-progress; then
+            _composer_ok=1
+            break
+        fi
+        warn "Composer install не удался (попытка ${_try}/3), ждём 5с и повторяем..."
+        sleep 5
+    done
+
+    if [[ "${_composer_ok}" -eq 1 ]]; then
+        log "PHP зависимости установлены"
+    else
+        warn "Composer не смог установить зависимости после 3 попыток"
+        warn "Можно продолжить с PRELEND_SKIP_COMPOSER=1 и позже повторить composer install вручную"
+        exit 1
+    fi
 fi
-composer -d "${WEBROOT}" install --no-interaction --prefer-dist --no-progress
-log "PHP зависимости установлены"
 
 # Internal API (systemd ExecStart = venv/bin/uvicorn) — без venv будет status=203/EXEC
 log "Venv для Internal API: ${WEBROOT}/venv ..."
