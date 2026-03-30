@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
-# Обновление GEO-баз без внешних API в рантайме:
-#   - MaxMind GeoLite2-Country.mmdb
+# Обновление GEO-базы без внешних API в рантайме:
 #   - IP2Location LITE DB1 BIN
 #
-# Нужные переменные окружения:
-#   MAXMIND_LICENSE_KEY   (обязательно для MaxMind)
-# Опционально:
-#   MAXMIND_EDITION_ID    (по умолчанию GeoLite2-Country)
+# Опциональные переменные окружения:
 #   IP2LOCATION_DB1_URL   (по умолчанию официальный LITE DB1 zip)
 #   PRELEND_WEBROOT       (по умолчанию /var/www/prelend)
 
@@ -20,8 +16,6 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 
 mkdir -p "${DATA_DIR}"
 
-MAXMIND_LICENSE_KEY="${MAXMIND_LICENSE_KEY:-}"
-MAXMIND_EDITION_ID="${MAXMIND_EDITION_ID:-GeoLite2-Country}"
 IP2LOCATION_DB1_URL="${IP2LOCATION_DB1_URL:-https://download.ip2location.com/lite/IP2LOCATION-LITE-DB1.BIN.ZIP}"
 
 log() { echo "[geo-update] $*"; }
@@ -33,32 +27,6 @@ sha256_file() {
   else
     shasum -a 256 "$1" | awk '{print $1}'
   fi
-}
-
-download_maxmind() {
-  if [[ -z "${MAXMIND_LICENSE_KEY}" ]]; then
-    warn "MAXMIND_LICENSE_KEY не задан, пропускаю MaxMind"
-    return 0
-  fi
-
-  local mm_url
-  mm_url="https://download.maxmind.com/app/geoip_download?edition_id=${MAXMIND_EDITION_ID}&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz"
-  local tarball="${TMP_DIR}/maxmind.tar.gz"
-  local extracted
-
-  log "Скачиваю MaxMind ${MAXMIND_EDITION_ID}..."
-  curl -fsSL --retry 3 --retry-delay 2 "${mm_url}" -o "${tarball}"
-
-  tar -xzf "${tarball}" -C "${TMP_DIR}"
-  extracted="$(ls "${TMP_DIR}"/*/GeoLite2-Country.mmdb 2>/dev/null | head -n 1 || true)"
-  if [[ -z "${extracted}" || ! -f "${extracted}" ]]; then
-    warn "Не найден GeoLite2-Country.mmdb после распаковки"
-    return 1
-  fi
-
-  install -m 0644 "${extracted}" "${DATA_DIR}/GeoLite2-Country.mmdb.new"
-  mv "${DATA_DIR}/GeoLite2-Country.mmdb.new" "${DATA_DIR}/GeoLite2-Country.mmdb"
-  log "MaxMind база обновлена"
 }
 
 download_ip2location() {
@@ -89,18 +57,12 @@ download_ip2location() {
 }
 
 write_meta() {
-  local mm_sha=""; local ip2_sha=""
-  [[ -f "${DATA_DIR}/GeoLite2-Country.mmdb" ]] && mm_sha="$(sha256_file "${DATA_DIR}/GeoLite2-Country.mmdb")"
+  local ip2_sha=""
   [[ -f "${DATA_DIR}/IP2LOCATION-LITE-DB1.BIN" ]] && ip2_sha="$(sha256_file "${DATA_DIR}/IP2LOCATION-LITE-DB1.BIN")"
 
   cat > "${META_FILE}.new" <<EOF
 {
   "updated_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "maxmind": {
-    "edition_id": "${MAXMIND_EDITION_ID}",
-    "path": "${DATA_DIR}/GeoLite2-Country.mmdb",
-    "sha256": "${mm_sha}"
-  },
   "ip2location": {
     "path": "${DATA_DIR}/IP2LOCATION-LITE-DB1.BIN",
     "sha256": "${ip2_sha}"
@@ -111,7 +73,6 @@ EOF
   log "Метаданные обновлены: ${META_FILE}"
 }
 
-download_maxmind
 download_ip2location
 write_meta
 

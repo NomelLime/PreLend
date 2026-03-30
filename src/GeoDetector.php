@@ -4,7 +4,7 @@ declare(strict_types=1);
  * GeoDetector.php
  *
  * Определяет ГЕО пользователя через GeoAdapter:
- * MaxMind -> Accept-Language region.
+ * IP2Location -> Accept-Language region.
  * Дополнительно парсит Accept-Language (языковой тег) для ContentLocaleResolver.
  */
 class GeoDetector

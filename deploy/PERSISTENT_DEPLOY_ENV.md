@@ -11,7 +11,8 @@ sudo install -m 600 -o root -g root /dev/stdin /etc/default/prelend-deploy <<'EO
 PRELEND_DOMAIN=yourdomain.me
 PRELEND_SOPS_ROOT=/root/sops-secrets
 SOPS_AGE_KEY_FILE=/etc/prelend/age.key
-MAXMIND_LICENSE_KEY=your_maxmind_license_key
+# Опционально: включить composer-шаг (по умолчанию выключен)
+# PRELEND_ENABLE_COMPOSER=1
 EOF
 ```
 

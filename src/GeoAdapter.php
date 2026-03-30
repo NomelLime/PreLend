@@ -1,24 +1,16 @@
 <?php
 declare(strict_types=1);
 /**
- * GeoAdapter — MaxMind primary + IP2Location fallback + Accept-Language rescue.
+ * GeoAdapter — IP2Location + Accept-Language rescue.
  *
  * Порядок:
- *   1) MaxMind GeoLite2 MMDB (локально, без сети)
- *   2) IP2Location BIN (локально, без сети; при наличии библиотеки)
- *   3) Регион из Accept-Language (последний rescue)
+ *   1) IP2Location BIN (локально, без сети; при наличии библиотеки)
+ *   2) Регион из Accept-Language (последний rescue)
  */
 final class GeoAdapter
 {
-    /** @var \MaxMind\Db\Reader|null */
-    private static $reader = null;
     /** @var object|null */
     private static $ip2Reader = null;
-
-    private static function dbPath(): string
-    {
-        return dirname(__DIR__) . '/data/GeoLite2-Country.mmdb';
-    }
 
     private static function ip2DbPath(): string
     {
@@ -28,11 +20,6 @@ final class GeoAdapter
     public static function resolveGeo(string $ip): string
     {
         self::ensureComposerAutoload();
-
-        $geo = self::lookupMaxMind($ip);
-        if ($geo !== 'XX') {
-            return $geo;
-        }
 
         $geo = self::lookupIp2Location($ip);
         if ($geo !== 'XX') {
@@ -53,31 +40,6 @@ final class GeoAdapter
         $autoload = dirname(__DIR__) . '/vendor/autoload.php';
         if (is_file($autoload)) {
             require_once $autoload;
-        }
-    }
-
-    private static function lookupMaxMind(string $ip): string
-    {
-        $path = self::dbPath();
-        if (!is_file($path)) {
-            return 'XX';
-        }
-        try {
-            if (self::$reader === null) {
-                if (!class_exists(\MaxMind\Db\Reader::class)) {
-                    return 'XX';
-                }
-                self::$reader = new \MaxMind\Db\Reader($path);
-            }
-            $record = self::$reader->get($ip);
-            if (!is_array($record)) {
-                return 'XX';
-            }
-            $iso = $record['country']['iso_code'] ?? 'XX';
-
-            return strtoupper((string) $iso);
-        } catch (Throwable $e) {
-            return 'XX';
         }
     }
 

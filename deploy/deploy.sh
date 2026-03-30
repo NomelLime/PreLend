@@ -83,7 +83,7 @@ apt-get install -y -qq \
     nginx \
     php${PHP_VER}-fpm php${PHP_VER}-cli php${PHP_VER}-sqlite3 \
     python3 python3-pip python3-venv \
-    sqlite3 git curl certbot python3-certbot-nginx unzip composer
+    sqlite3 git curl certbot python3-certbot-nginx unzip
 
 # ── 2. Клонируем / обновляем репозиторий ──────────────────────────────────────
 log "Деплоим код в ${WEBROOT}..."
@@ -119,16 +119,13 @@ log "Устанавливаем Python зависимости..."
 pip3 install --break-system-packages -r "${WEBROOT}/requirements.txt" -q
 log "Python зависимости установлены"
 
-# ── 5a. PHP зависимости (Composer) ────────────────────────────────────────────
-if [[ "${PRELEND_SKIP_COMPOSER:-0}" == "1" ]]; then
-    warn "PRELEND_SKIP_COMPOSER=1 — пропускаем Composer (Geo fallback по PHP-пакетам может быть ограничен)"
-else
-    log "Устанавливаем PHP зависимости (MaxMind/IP2Location)..."
+# ── 5a. PHP зависимости (Composer, опционально) ───────────────────────────────
+if [[ "${PRELEND_ENABLE_COMPOSER:-0}" == "1" ]]; then
+    log "Устанавливаем PHP зависимость IP2Location через Composer (опционально)..."
     if [[ ! -f "${WEBROOT}/composer.json" ]]; then
         cat > "${WEBROOT}/composer.json" <<'JSON'
 {
   "require": {
-    "maxmind-db/reader": "^1.12",
     "ip2location/ip2location-php": "^8.4"
   }
 }
@@ -150,12 +147,14 @@ JSON
     done
 
     if [[ "${_composer_ok}" -eq 1 ]]; then
-        log "PHP зависимости установлены"
+        log "Composer зависимости установлены"
     else
-        warn "Composer не смог установить зависимости после 3 попыток"
-        warn "Можно продолжить с PRELEND_SKIP_COMPOSER=1 и позже повторить composer install вручную"
-        exit 1
+        warn "Composer не смог установить зависимости после 3 попыток — продолжаем без vendor/"
+        warn "IP2Location будет работать только после успешного composer install"
     fi
+else
+    warn "PRELEND_ENABLE_COMPOSER!=1 — Composer пропущен (по умолчанию)"
+    warn "Для PHP-библиотеки IP2Location запусти: PRELEND_ENABLE_COMPOSER=1 sudo bash deploy/deploy.sh"
 fi
 
 # Internal API (systemd ExecStart = venv/bin/uvicorn) — без venv будет status=203/EXEC
@@ -468,7 +467,7 @@ LOGDIR=${WEBROOT}/logs
 # retry postbacks — каждые 10 минут
 */10 * * * * ${DEPLOY_USER}  ${CRON_WRAP}\$PYTHON \$PRELEND/cron/retry_postbacks.py >> \$LOGDIR/retry_postbacks.log 2>&1
 
-# GEO базы (MaxMind/IP2Location) — каждый понедельник в 03:20 UTC
+# GEO база (IP2Location) — каждый понедельник в 03:20 UTC
 20 3 * * 1   ${DEPLOY_USER}  ${CRON_WRAP}/usr/bin/bash \$PRELEND/deploy/update_geo_bases.sh >> \$LOGDIR/geo_bases_update.log 2>&1
 CRON_CONF
 chmod 644 "${CRON_FILE}"

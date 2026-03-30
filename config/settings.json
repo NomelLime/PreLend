@@ -15,7 +15,7 @@
     "datacenter_header": "HTTP_CF_IPDATACENTERCOUNTRY"
   },
   "geoip": {
-    "provider_chain": "maxmind,ip2location,accept_language"
+    "provider_chain": "ip2location,accept_language"
   },
   "scoring": {
     "min_uptime_to_activate": 50.0

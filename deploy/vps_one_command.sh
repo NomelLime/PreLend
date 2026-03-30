@@ -19,7 +19,7 @@
 # PRELEND_DOMAIN=yourdomain.me
 # PRELEND_SOPS_ROOT=/root/sops-secrets
 # SOPS_AGE_KEY_FILE=/etc/prelend/age.key
-# MAXMIND_LICENSE_KEY=your_maxmind_license_key
+# PRELEND_ENABLE_COMPOSER=1   # опционально
 # EOF
 #   sudo bash deploy/vps_one_command.sh
 #
