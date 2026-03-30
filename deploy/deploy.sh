@@ -39,6 +39,34 @@ log()  { echo -e "${GREEN}[deploy]${NC} $*"; }
 warn() { echo -e "${YELLOW}[warn]${NC}  $*"; }
 die()  { echo -e "${RED}[error]${NC} $*"; exit 1; }
 
+# ── 0. Preflight: env + backup ────────────────────────────────────────────────
+log "Preflight: проверка окружения и бэкап критичных файлов..."
+if [[ "${DOMAIN}" == "yourdomain.me" ]]; then
+    warn "PRELEND_DOMAIN не задан (используется значение по умолчанию: ${DOMAIN})"
+    warn "Рекомендуется запускать так: PRELEND_DOMAIN=example.com sudo bash deploy/deploy.sh"
+fi
+if [[ "${PRELEND_USE_SOPS}" == "1" ]]; then
+    [[ -n "${PRELEND_SOPS_ROOT}" ]] || die "PRELEND_USE_SOPS=1 требует PRELEND_SOPS_ROOT"
+    [[ -n "${SOPS_AGE_KEY_FILE:-}" ]] || die "PRELEND_USE_SOPS=1 требует SOPS_AGE_KEY_FILE"
+fi
+
+BACKUP_STAMP="$(date -u +%Y%m%d_%H%M%S)"
+BACKUP_DIR="/var/backups/prelend-deploy/${BACKUP_STAMP}"
+mkdir -p "${BACKUP_DIR}"
+log "Backup dir: ${BACKUP_DIR}"
+
+backup_if_exists() {
+    local src="$1"
+    local name="$2"
+    if [[ -e "${src}" ]]; then
+        cp -a "${src}" "${BACKUP_DIR}/${name}"
+    fi
+}
+
+backup_if_exists "/etc/nginx/sites-available/prelend" "nginx_prelend.conf"
+backup_if_exists "/etc/php/${PHP_VER}/fpm/pool.d/prelend.conf" "php_fpm_prelend.conf"
+backup_if_exists "/var/www/prelend/data/clicks.db" "clicks.db"
+
 # ── 1. Зависимости ────────────────────────────────────────────────────────────
 log "Устанавливаем зависимости..."
 apt-get update -qq
@@ -493,6 +521,28 @@ else
     warn "БД не найдена: ${DB_PATH}"
 fi
 
+# ── 14. Post-check: service status + logs ─────────────────────────────────────
+log "Post-check: systemctl status (nginx/php-fpm/internal-api)..."
+systemctl status nginx --no-pager -l || true
+systemctl status "php${PHP_VER}-fpm" --no-pager -l || true
+if systemctl cat prelend-internal-api.service &>/dev/null || [[ -f /etc/systemd/system/prelend-internal-api.service ]]; then
+    systemctl status prelend-internal-api --no-pager -l || true
+else
+    warn "prelend-internal-api.service не найден"
+fi
+
+if [[ "${DOMAIN}" != "yourdomain.me" ]]; then
+    log "Post-check: curl -I https://${DOMAIN}"
+    curl -sI "https://${DOMAIN}" || true
+else
+    warn "Post-check HTTPS пропущен: PRELEND_DOMAIN не задан"
+fi
+
+log "Post-check logs: prelend_error.log, certbot_deploy.log, geo_bases_update.log"
+[[ -f /var/log/nginx/prelend_error.log ]] && tail -n 30 /var/log/nginx/prelend_error.log || true
+[[ -f "${WEBROOT}/logs/certbot_deploy.log" ]] && tail -n 30 "${WEBROOT}/logs/certbot_deploy.log" || true
+[[ -f "${WEBROOT}/logs/geo_bases_update.log" ]] && tail -n 30 "${WEBROOT}/logs/geo_bases_update.log" || true
+
 # ── Итог ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -510,5 +560,6 @@ echo "  • Конфиги:                 nano ${WEBROOT}/config/advertisers.j
 echo "  • telegram_router — на ПК разработчика"
 echo "  • Постбэк:                 https://${DOMAIN}/postback.php?click_id=test"
 echo "  • Логи:                    tail -f ${WEBROOT}/logs/*.log"
+echo "  • Бэкап перед деплоем:     ${BACKUP_DIR}"
 echo "  • После git pull:          sudo bash ${WEBROOT}/deploy/reload_services.sh"
 echo ""
