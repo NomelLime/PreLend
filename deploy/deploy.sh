@@ -195,11 +195,20 @@ Requires=prelend-decrypt-env.service
 EnvironmentFile=/run/prelend.env
 PHPDROP
 
-    cat > /etc/systemd/system/prelend-internal-api.service <<APIUNIT
+    mkdir -p /etc/systemd/system/prelend-internal-api.service.d
+    cat > /etc/systemd/system/prelend-internal-api.service.d/prelend-sops.conf <<APIDROP
+[Unit]
+After=prelend-decrypt-env.service
+Requires=prelend-decrypt-env.service
+APIDROP
+
+fi
+
+# ── 5c. Systemd unit Internal API (всегда, не только SOPS) ───────────────────
+cat > /etc/systemd/system/prelend-internal-api.service <<APIUNIT
 [Unit]
 Description=PreLend Internal API
-After=network.target prelend-decrypt-env.service
-Requires=prelend-decrypt-env.service
+After=network.target
 
 [Service]
 User=${DEPLOY_USER}
@@ -208,22 +217,13 @@ WorkingDirectory=${WEBROOT}
 ExecStart=${WEBROOT}/venv/bin/uvicorn internal_api.main:app --host 127.0.0.1 --port 9090 --no-access-log
 Restart=always
 RestartSec=5
-EnvironmentFile=/run/prelend.env
+EnvironmentFile=-/run/prelend.env
 NoNewPrivileges=yes
 PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target
 APIUNIT
-
-    systemctl daemon-reload
-    systemctl enable prelend-decrypt-env.service
-    systemctl start prelend-decrypt-env.service || die "SOPS: расшифровка не удалась (ключ, .sops.yaml, secrets.enc.env)"
-    log "SOPS: записан /run/prelend.env"
-
-    systemctl daemon-reload
-    systemctl enable prelend-internal-api.service
-fi
 
 # ── 6. .env файл ──────────────────────────────────────────────────────────────
 if [[ "${PRELEND_USE_SOPS}" == "1" ]]; then
@@ -297,6 +297,23 @@ server {
         return 404;
     }
 
+    # .env и .git точно закрыты
+    location ~ /\.(env|git) {
+        deny all;
+        return 404;
+    }
+
+    # Internal API доступен только локально/через SSH tunnel
+    location /internal_api {
+        deny all;
+        return 404;
+    }
+
+    # Заголовки безопасности
+    add_header X-Frame-Options        "SAMEORIGIN"  always;
+    add_header X-Content-Type-Options "nosniff"     always;
+    add_header Referrer-Policy        "no-referrer" always;
+
     # Постбэк — отдельный location для ясности
     location = /postback.php {
         fastcgi_pass  unix:${PHP_FPM_LISTEN};
@@ -337,6 +354,12 @@ server {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
+    # Статика (если появится)
+    location ~* \.(css|js|png|jpg|ico|woff2?)\$ {
+        expires 30d;
+        access_log off;
+    }
+
     # Скрываем версию nginx
     server_tokens off;
 }
@@ -345,6 +368,9 @@ NGINX
 # Rate limit зона для постбэков
 if ! grep -q "limit_req_zone.*postback" /etc/nginx/nginx.conf; then
     sed -i '/http {/a\    limit_req_zone $binary_remote_addr zone=postback:10m rate=30r/s;' /etc/nginx/nginx.conf
+fi
+if ! grep -q "real_ip_header CF-Connecting-IP;" /etc/nginx/nginx.conf; then
+    sed -i '/http {/a\    real_ip_recursive on;\n    set_real_ip_from 131.0.72.0/22;\n    set_real_ip_from 172.64.0.0/13;\n    set_real_ip_from 104.24.0.0/14;\n    set_real_ip_from 104.16.0.0/13;\n    set_real_ip_from 162.158.0.0/15;\n    set_real_ip_from 198.41.128.0/17;\n    set_real_ip_from 197.234.240.0/22;\n    set_real_ip_from 188.114.96.0/20;\n    set_real_ip_from 190.93.240.0/20;\n    set_real_ip_from 108.162.192.0/18;\n    set_real_ip_from 141.101.64.0/18;\n    set_real_ip_from 103.31.4.0/22;\n    set_real_ip_from 103.22.200.0/22;\n    set_real_ip_from 103.21.244.0/22;\n    real_ip_header CF-Connecting-IP;' /etc/nginx/nginx.conf
 fi
 
 ln -sf "${NGINX_CONF}" /etc/nginx/sites-enabled/prelend 2>/dev/null || true
@@ -377,6 +403,9 @@ LOGDIR=${WEBROOT}/logs
 
 # test_conversions report — каждый понедельник в 09:30 UTC
 30 9 * * 1   ${DEPLOY_USER}  ${CRON_WRAP}\$PYTHON \$PRELEND/monitor/test_conversions.py report >> \$LOGDIR/test_conversions.log 2>&1
+
+# retry postbacks — каждые 10 минут
+*/10 * * * * ${DEPLOY_USER}  ${CRON_WRAP}\$PYTHON \$PRELEND/cron/retry_postbacks.py >> \$LOGDIR/retry_postbacks.log 2>&1
 
 # GEO базы (MaxMind/IP2Location) — каждый понедельник в 03:20 UTC
 20 3 * * 1   ${DEPLOY_USER}  ${CRON_WRAP}/usr/bin/bash \$PRELEND/deploy/update_geo_bases.sh >> \$LOGDIR/geo_bases_update.log 2>&1
@@ -423,14 +452,31 @@ find "${WEBROOT}/config" -type f -exec chmod 664 {} \;
 # ── 11. SSL (Certbot) ─────────────────────────────────────────────────────────
 if [[ "${DOMAIN}" != "yourdomain.me" ]]; then
     log "Получаем SSL сертификат для ${DOMAIN}..."
+    mkdir -p "${WEBROOT}/logs"
     certbot --nginx -d "${DOMAIN}" -d "www.${DOMAIN}" \
         --non-interactive --agree-tos --email "admin@${DOMAIN}" \
-        --redirect 2>/dev/null && log "SSL установлен" || warn "SSL не удался — продолжаем без HTTPS"
+        --redirect 2>>"${WEBROOT}/logs/certbot_deploy.log" && log "SSL установлен" || warn "SSL не удался — см. ${WEBROOT}/logs/certbot_deploy.log"
 else
     warn "DOMAIN не задан — SSL пропускаем. Укажи: PRELEND_DOMAIN=yourdomain.me bash deploy.sh"
 fi
 
-# ── 12. Smoke test деплоя ──────────────────────────────────────────────────────
+# ── 12. Перезагрузка Nginx, PHP-FPM, Internal API ──────────────────────────────
+systemctl daemon-reload
+if [[ "${PRELEND_USE_SOPS}" == "1" ]]; then
+    systemctl enable prelend-decrypt-env.service
+    systemctl start prelend-decrypt-env.service || die "SOPS: расшифровка не удалась (ключ, .sops.yaml, secrets.enc.env)"
+    log "SOPS: записан /run/prelend.env"
+fi
+systemctl enable prelend-internal-api.service
+
+if [[ -f "${WEBROOT}/deploy/reload_services.sh" ]]; then
+    log "Перезапуск веб-стека и Internal API (reload_services.sh)..."
+    bash "${WEBROOT}/deploy/reload_services.sh" || warn "reload_services.sh завершился с ошибкой"
+else
+    warn "Нет ${WEBROOT}/deploy/reload_services.sh — перезапусти сервисы вручную"
+fi
+
+# ── 13. Smoke test деплоя ──────────────────────────────────────────────────────
 log "Проверяем деплой..."
 sleep 2
 
@@ -445,14 +491,6 @@ if [[ -f "${DB_PATH}" ]]; then
     log "Таблицы в БД: ${tables}"
 else
     warn "БД не найдена: ${DB_PATH}"
-fi
-
-# ── 13. Перезагрузка Nginx, PHP-FPM, Internal API ──────────────────────────────
-if [[ -f "${WEBROOT}/deploy/reload_services.sh" ]]; then
-    log "Перезапуск веб-стека и Internal API (reload_services.sh)..."
-    bash "${WEBROOT}/deploy/reload_services.sh" || warn "reload_services.sh завершился с ошибкой"
-else
-    warn "Нет ${WEBROOT}/deploy/reload_services.sh — перезапусти сервисы вручную"
 fi
 
 # ── Итог ──────────────────────────────────────────────────────────────────────
