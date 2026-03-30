@@ -510,3 +510,24 @@ curl -i -H "X-API-Key: <REAL_KEY>" http://127.0.0.1:9090/agents
 | **`deploy/deploy.sh`** | В шаг **«10. Права доступа»** добавлены **`chown`/`chmod`** для **`config/`** (аналогично **`data/`**, **`logs/`**), чтобы новые деплои не оставляли каталог без права записи. |
 | **Операции на VPS** | Разовый **`chown www-data:www-data`**, **`chmod 775`** на каталог, **`664`** на файлы → **`systemctl restart prelend-internal-api`**. Детали и smoke **curl PUT** — в разделе выше **«ОБЯЗАТЕЛЬНО: права на каталог config/»**. |
 | **ContentHub** | В ответах об ошибке PUT пробрасывается тело API (**`last_put_error`**); в **`ContentHub/status.md`** добавлена отсылка к этому разделу. |
+
+### Сессия 26 (30.03.2026) — GEO refactor (без MaxMind), устойчивый deploy, прод-выкатка
+
+| Область | Изменение / факт |
+|---------|------------------|
+| **`src/GeoAdapter.php`** | GEO-цепочка упрощена: **`IP2Location -> Accept-Language`**. MaxMind удалён из рантайма. |
+| **`src/GeoDetector.php`** | Документация обновлена под новую цепочку resolve. |
+| **`config/settings.json`** | `geoip.provider_chain` → `ip2location,accept_language`. |
+| **`deploy/update_geo_bases.sh`** | Автообновление GEO-базы переведено на **только IP2Location LITE DB1** (без MaxMind license key). |
+| **`monitor/health_check.py`** | Диагностика GEO-стека: проверка `IP2LOCATION-LITE-DB1.BIN` и `vendor/ip2location` (warning-only). |
+| **`deploy/deploy.sh`** | Большой hardening: preflight backup (`/var/backups/prelend-deploy/*`), post-check (`systemctl`, `curl -I`, tail логов), security headers, deny для `/.env` и `/.git`, deny `/internal_api`, Cloudflare `real_ip_*`, cron для `retry_postbacks.py`, certbot stderr в `logs/certbot_deploy.log`, smoke-test после финального reload. |
+| **Composer в deploy** | По умолчанию **выключен** (стабильный деплой без внешней сети). Включается флагом **`PRELEND_ENABLE_COMPOSER=1`**; при сетевых сбоях деплой не должен блокироваться. |
+| **SOPS automation** | `deploy/vps_one_command.sh` и `deploy/deploy.sh` подхватывают `/etc/default/prelend-deploy` (постоянные env, запуск без длинной командной строки). |
+| **Новые docs** | `deploy/GEO_BASES_AUTOUPDATE.md`, `deploy/PERSISTENT_DEPLOY_ENV.md`. |
+| **Прод pulsority.com** | Деплой завершён успешно: `nginx/php-fpm/prelend-internal-api` active, `/health` OK, `curl -I https://pulsority.com` → `200`, security headers присутствуют. |
+
+**Практика обновления на VPS (текущий рабочий регламент):**
+1. `git stash push -m "server-local-all"` (если есть локальные правки),
+2. `git pull origin main`,
+3. вернуть только нужные локальные файлы (`config/advertisers.json`, `data/agent_memory.json`),
+4. `sudo bash deploy/vps_one_command.sh`.
