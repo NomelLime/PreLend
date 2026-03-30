@@ -14,6 +14,15 @@
 #        SOPS_AGE_KEY_FILE=/etc/prelend/age.key \
 #        bash deploy/vps_one_command.sh
 #
+# Либо (один раз) создай /etc/default/prelend-deploy и запускай без переменных:
+#   sudo install -m 600 -o root -g root /dev/stdin /etc/default/prelend-deploy <<'EOF'
+# PRELEND_DOMAIN=yourdomain.me
+# PRELEND_SOPS_ROOT=/root/sops-secrets
+# SOPS_AGE_KEY_FILE=/etc/prelend/age.key
+# MAXMIND_LICENSE_KEY=your_maxmind_license_key
+# EOF
+#   sudo bash deploy/vps_one_command.sh
+#
 # Одной строкой с клонированием (публичный репо):
 #   sudo bash -c 'git clone https://github.com/NomelLime/PreLend.git /tmp/pl && \
 #     PRELEND_DOMAIN=yourdomain.me PRELEND_SOPS_ROOT=/root/sops-secrets \
@@ -28,6 +37,14 @@ set -euo pipefail
   echo "Запусти от root: sudo bash deploy/vps_one_command.sh"
   exit 1
 }
+
+# Подхватываем постоянные настройки деплоя (если есть).
+if [[ -f /etc/default/prelend-deploy ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source /etc/default/prelend-deploy
+  set +a
+fi
 
 export PRELEND_USE_SOPS=1
 export PRELEND_SOPS_ROOT="${PRELEND_SOPS_ROOT:?Задай PRELEND_SOPS_ROOT — каталог с secrets.enc.env и .sops.yaml}"

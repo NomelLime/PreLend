@@ -20,6 +20,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Глобальные параметры деплоя можно хранить здесь:
+# /etc/default/prelend-deploy (опционально).
+if [[ -f /etc/default/prelend-deploy ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source /etc/default/prelend-deploy
+    set +a
+fi
+
 # ── Конфиг (меняй под свой стенд) ────────────────────────────────────────────
 PRELEND_USE_SOPS="${PRELEND_USE_SOPS:-0}"
 PRELEND_SOPS_ROOT="${PRELEND_SOPS_ROOT:-}"
