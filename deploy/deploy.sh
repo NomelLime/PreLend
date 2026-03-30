@@ -46,7 +46,7 @@ apt-get install -y -qq \
     nginx \
     php${PHP_VER}-fpm php${PHP_VER}-cli php${PHP_VER}-sqlite3 \
     python3 python3-pip python3-venv \
-    sqlite3 git curl certbot python3-certbot-nginx
+    sqlite3 git curl certbot python3-certbot-nginx unzip composer
 
 # ── 2. Клонируем / обновляем репозиторий ──────────────────────────────────────
 log "Деплоим код в ${WEBROOT}..."
@@ -81,6 +81,21 @@ fi
 log "Устанавливаем Python зависимости..."
 pip3 install --break-system-packages -r "${WEBROOT}/requirements.txt" -q
 log "Python зависимости установлены"
+
+# ── 5a. PHP зависимости (Composer) ────────────────────────────────────────────
+log "Устанавливаем PHP зависимости (MaxMind/IP2Location)..."
+if [[ ! -f "${WEBROOT}/composer.json" ]]; then
+    cat > "${WEBROOT}/composer.json" <<'JSON'
+{
+  "require": {
+    "maxmind-db/reader": "^1.12",
+    "ip2location/ip2location-php": "^8.4"
+  }
+}
+JSON
+fi
+composer -d "${WEBROOT}" install --no-interaction --prefer-dist --no-progress
+log "PHP зависимости установлены"
 
 # Internal API (systemd ExecStart = venv/bin/uvicorn) — без venv будет status=203/EXEC
 log "Venv для Internal API: ${WEBROOT}/venv ..."
@@ -362,6 +377,9 @@ LOGDIR=${WEBROOT}/logs
 
 # test_conversions report — каждый понедельник в 09:30 UTC
 30 9 * * 1   ${DEPLOY_USER}  ${CRON_WRAP}\$PYTHON \$PRELEND/monitor/test_conversions.py report >> \$LOGDIR/test_conversions.log 2>&1
+
+# GEO базы (MaxMind/IP2Location) — каждый понедельник в 03:20 UTC
+20 3 * * 1   ${DEPLOY_USER}  ${CRON_WRAP}/usr/bin/bash \$PRELEND/deploy/update_geo_bases.sh >> \$LOGDIR/geo_bases_update.log 2>&1
 CRON_CONF
 chmod 644 "${CRON_FILE}"
 log "Cron задачи установлены: ${CRON_FILE}"
@@ -396,6 +414,7 @@ chmod 755 "${WEBROOT}/public"
 chmod 644 "${WEBROOT}/public"/*.php
 # Скрипты мониторинга должны запускаться
 chmod 750 "${WEBROOT}/monitor"/*.py "${WEBROOT}/agents"/*.py 2>/dev/null || true
+chmod 750 "${WEBROOT}/deploy/update_geo_bases.sh" 2>/dev/null || true
 # config/, data/, logs/ — владелец www-data (запись: Internal API, БД, cron)
 chmod 775 "${WEBROOT}/data" "${WEBROOT}/logs" "${WEBROOT}/config"
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${WEBROOT}/data" "${WEBROOT}/logs" "${WEBROOT}/config"

@@ -118,7 +118,29 @@ def get_prev_status(conn: sqlite3.Connection, adv_id: str) -> bool | None:
     return bool(row["is_up"]) if row else None
 
 
+def check_geo_stack() -> None:
+    """
+    Диагностика GEO-стека (базы и PHP-библиотеки для GeoAdapter).
+    Ничего не ломает, только пишет предупреждения в лог.
+    """
+    mmdb = ROOT / "data" / "GeoLite2-Country.mmdb"
+    ip2bin = ROOT / "data" / "IP2LOCATION-LITE-DB1.BIN"
+    vendor_maxmind = ROOT / "vendor" / "maxmind-db" / "reader"
+    vendor_ip2 = ROOT / "vendor" / "ip2location" / "ip2location-php"
+
+    if not mmdb.exists():
+        logger.warning("GEO: отсутствует база MaxMind: %s", mmdb)
+    if not ip2bin.exists():
+        logger.warning("GEO: отсутствует база IP2Location: %s", ip2bin)
+    if not vendor_maxmind.exists():
+        logger.warning("GEO: отсутствует PHP пакет maxmind-db/reader в vendor/")
+    if not vendor_ip2.exists():
+        logger.warning("GEO: отсутствует PHP пакет ip2location/ip2location-php в vendor/")
+
+
 def run() -> None:
+    check_geo_stack()
+
     settings    = load_json(CFG_SET)
     advertisers = load_json(CFG_ADV)
     db_path     = str(settings.get("db_path", ROOT / "data" / "clicks.db"))

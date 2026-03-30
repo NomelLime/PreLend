@@ -9,9 +9,10 @@ require_once ROOT . '/src/TemplateI18n.php';
 
 echo "=== Content locale ===\n";
 
-test('DE → de-DE', function (): void {
-    $_SERVER['HTTP_CF_IPCOUNTRY']  = 'DE';
-    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-US';
+test('Accept-Language de-DE rescue → de-DE', function (): void {
+    unset($_SERVER['HTTP_CF_IPCOUNTRY']);
+    unset($_SERVER['REMOTE_ADDR']);
+    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'de-DE,de;q=0.9';
     $geo = new GeoDetector();
     $r   = ContentLocaleResolver::resolve($geo);
     assert_eq('de-DE', $r['content_locale']);
@@ -19,18 +20,20 @@ test('DE → de-DE', function (): void {
     assert_eq('country', $r['resolve_source']);
 });
 
-test('XX + Accept-Language ru-RU → ru-RU', function (): void {
-    $_SERVER['HTTP_CF_IPCOUNTRY']    = 'XX';
+test('Accept-Language ru-RU rescue → ru-RU', function (): void {
+    unset($_SERVER['HTTP_CF_IPCOUNTRY']);
+    unset($_SERVER['REMOTE_ADDR']);
     $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'ru-RU,ru;q=0.9';
     $geo = new GeoDetector();
     $r   = ContentLocaleResolver::resolve($geo);
-    assert_eq('ru-RU', $r['content_locale']);
-    assert_eq('accept_language', $r['resolve_source']);
+    assert_eq('ru-RU', $r['content_locale']); // country=RU из rescue региона
+    assert_eq('country', $r['resolve_source']);
 });
 
-test('BO (LATAM) → es-419', function (): void {
-    $_SERVER['HTTP_CF_IPCOUNTRY']    = 'BO';
-    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-US';
+test('Accept-Language es-BO rescue → es-419', function (): void {
+    unset($_SERVER['HTTP_CF_IPCOUNTRY']);
+    unset($_SERVER['REMOTE_ADDR']);
+    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'es-BO,es;q=0.9';
     $geo = new GeoDetector();
     $r   = ContentLocaleResolver::resolve($geo);
     assert_eq('es-419', $r['content_locale']);
@@ -38,13 +41,14 @@ test('BO (LATAM) → es-419', function (): void {
     assert_eq('country_latam', $r['resolve_source']);
 });
 
-test('неизвестная страна LT → en-US', function (): void {
-    $_SERVER['HTTP_CF_IPCOUNTRY']    = 'LT';
-    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'pl-PL';
+test('без региона в Accept-Language -> default en-US', function (): void {
+    unset($_SERVER['HTTP_CF_IPCOUNTRY']);
+    unset($_SERVER['REMOTE_ADDR']);
+    $_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'pl,ru;q=0.9';
     $geo = new GeoDetector();
     $r   = ContentLocaleResolver::resolve($geo);
     assert_eq('en-US', $r['content_locale']);
-    assert_eq('country_unknown', $r['resolve_source']);
+    assert_eq('default', $r['resolve_source']);
 });
 
 test('TemplateI18n expert_review DE содержит немецкий заголовок', function (): void {

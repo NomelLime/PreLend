@@ -3,13 +3,9 @@ declare(strict_types=1);
 /**
  * GeoDetector.php
  *
- * Определяет ГЕО пользователя из заголовка Cloudflare CF-IPCountry.
- * Дополнительно парсит Accept-Language как fallback-сигнал.
- *
- * CF-IPCountry: двухбуквенный ISO-3166-1 alpha-2 код страны.
- * Специальные значения Cloudflare:
- *   XX — нет данных / неизвестно
- *   T1 — Tor-трафик
+ * Определяет ГЕО пользователя через GeoAdapter:
+ * MaxMind -> Accept-Language region.
+ * Дополнительно парсит Accept-Language (языковой тег) для ContentLocaleResolver.
  */
 class GeoDetector
 {
